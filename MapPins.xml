@@ -1,0 +1,22 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+  <Frame name="PintsStorybookPinTemplate" virtual="true" mixin="PintsStorybookPinMixin" enableMouse="true">
+    <Size x="15" y="15"/>
+    <Layers>
+      <Layer level="BACKGROUND">
+        <Texture parentKey="ring">
+          <Anchors>
+            <Anchor point="TOPLEFT" x="-2" y="2"/>
+            <Anchor point="BOTTOMRIGHT" x="2" y="-2"/>
+          </Anchors>
+          <Color r="0.08" g="0.05" b="0.02" a="0.9"/>
+        </Texture>
+      </Layer>
+      <Layer level="ARTWORK">
+        <Texture parentKey="icon" setAllPoints="true"/>
+      </Layer>
+    </Layers>
+    <Scripts>
+      <OnLoad method="OnLoad"/>
+    </Scripts>
+  </Frame>
+</Ui>

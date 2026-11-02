@@ -1,0 +1,26 @@
+## Interface: 11508, 11509, 16001
+## Title: |cffd4a017Pint's|r Quest Book
+## Notes: Every quest in a zone, opened like a storybook with your name on the cover - chains, XP for your level and rewards, a contents page with your completion, a quest tracker, auto accept/turn-in, map icons and objective areas, Achievements and Rare Spawns. /qb
+## Author: Jake (Pint's Add-ons, built with Claude)
+## Version: 1.6
+## X-Curse-Project-ID: 1779417
+## X-License: GPL-3.0
+## IconTexture: Interface\AddOns\PintsQuestBook\Icon
+## SavedVariables: PintsQuestBookDB
+## OptionalDeps: PintsAlts, PintsCraftUpgrades, LibDBIcon-1.0
+
+QuestData.lua
+QuestAreas.lua
+TownData.lua
+Zones.lua
+PintsQuestBook.lua
+Areas.lua
+Tracker.lua
+Auto.lua
+Deeds.lua
+RareData.lua
+Rares.lua
+MapPins.lua
+MapPins.xml
+AreaOverlay.lua
+Finder.lua

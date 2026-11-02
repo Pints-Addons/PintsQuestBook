@@ -1,0 +1,7 @@
+Pint's Quest Book - Changelog
+
+v1.6
+- First public release as Pint's Quest Book.
+- The Dungeon Journal is now its own add-on, Pint's Dungeon Journal; /qb journal opens it when installed.
+- Holiday quests are hidden unless the holiday is active.
+- Map icons skip quests you're too low or too high level for.
