@@ -21,7 +21,9 @@ end
 -- the person (or object) offering the quest; nil for quests from items or shared by a party member
 local function Giver()
 	if not UnitExists("npc") or UnitIsUnit("npc", "player") or UnitIsPlayer("npc") then return nil end
-	return UnitName("npc")
+	local n = UnitName("npc")
+	if type(issecretvalue) == "function" and issecretvalue(n) then return nil end   -- (WoW Forever may hide it)
+	return n
 end
 
 local function ItemList(kind, n)
@@ -88,6 +90,7 @@ end
 ---------------------------------------------------------------- putting it into the book
 local nameIndex
 local function NameIndex(name)
+	if type(name) ~= "string" or (type(issecretvalue) == "function" and issecretvalue(name)) then return nil end
 	local d = D()
 	if not nameIndex then
 		nameIndex = {}
@@ -132,11 +135,11 @@ local function ApplyOne(id, r)
 	if r.ch then q[10] = r.ch end
 	if r.it then q[11] = r.it end
 	if r.s then
-		q[13] = NameIndex(r.s[1])
+		q[13] = NameIndex(r.s[1]) or q[13]
 		if r.s[2] then q[18], q[19], q[20] = r.s[2], r.s[3], r.s[4] end
 	end
 	if r.e then
-		q[14] = NameIndex(r.e[1])
+		q[14] = NameIndex(r.e[1]) or q[14]
 		if r.e[2] then q[21], q[22], q[23] = r.e[2], r.e[3], r.e[4] end
 	end
 	if r.o and r.o ~= "" then q[15] = r.o end
