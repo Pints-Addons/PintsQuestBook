@@ -1,6 +1,16 @@
 -- Pints Quest Book: quest objective areas drawn as soft, see-through shading on the world map and the minimap,
 -- each quest in its own colour (see Areas.lua). Overlapping spots run together into one area.
 local ADDON, NS = ...
+-- Compatibility: WoW Forever runs on the modern game client, where these older functions moved or were renamed.
+local MouseIsOver = MouseIsOver or function(f, top, bottom, left, right)
+	if not (f and f.IsMouseOver) then return false end
+	-- (the modern client refuses to measure some frames, and may answer "secret": both count as "no")
+	local ok, r = pcall(f.IsMouseOver, f, top or 0, bottom or 0, left or 0, right or 0)
+	if not ok or (type(issecretvalue) == "function" and issecretvalue(r)) then return false end
+	return r and true or false
+end
+local GetMouseFocus = GetMouseFocus or function() local t = GetMouseFoci and GetMouseFoci(); return t and t[1] end
+
 local function db() return NS.DB and NS.DB() end
 local R_YARDS = 42          -- radius of each spot (cells are ~45 yards apart, so neighbours merge)
 local MAP_ALPHA, MINI_ALPHA = 0.22, 0.28

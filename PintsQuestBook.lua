@@ -2,6 +2,9 @@
 -- Left page: the zone's quests with chains grouped and indented link by link. Right page: the selected quest with
 -- XP (adjusted for your level), money, gear and reputation rewards.
 local ADDON, NS = ...
+-- Compatibility: WoW Forever runs on the modern game client, where these older functions moved or were renamed.
+local GetItemInfo = GetItemInfo or (C_Item and C_Item.GetItemInfo)
+
 local QB = {}
 _G.PintsQuestBook = QB
 
@@ -96,7 +99,10 @@ local function RoundXP(x)
   return math.floor(x / 50 + 0.5) * 50
 end
 local XP_STEP = { [6] = 0.8, [7] = 0.6, [8] = 0.4, [9] = 0.2 }
-local function FullXP(q) return (q[8] or 0) > 0 and math.ceil(q[8] / 0.6) or 0 end
+local function FullXP(q)
+  if q.fullXP then return q.fullXP end   -- XP recorded in game
+  return (q[8] or 0) > 0 and math.ceil(q[8] / 0.6) or 0
+end
 local function XPAt(q, plevel)
   local full = FullXP(q)
   if full == 0 then return 0, 1 end
@@ -490,6 +496,7 @@ function NS.QuestTooltip(tt, id)
   tt:AddLine(q[1], 1, 0.82, 0)
   tt:AddLine(("Level %s%s"):format(q[2] > 0 and q[2] or "?", (q[3] or 0) > 0 and ("   (requires " .. q[3] .. ")") or ""), 1, 1, 1)
   tt:AddLine(STATUS_TEXT[Status(id)]:format(q[3] or 0), 0.6, 0.8, 1)
+  if q.checked then tt:AddLine(q.isNew and "New - recorded in game" or "Checked in game", 0.4, 1, 0.4) end
   for _, w in ipairs({ { "Starts", q[13], q[18], q[19], q[20] }, { "Turn in", q[14], q[21], q[22], q[23] } }) do
     if Name(w[2]) then
       local zn, _, x, y = Locate(w[3], w[4], w[5])
@@ -1322,6 +1329,7 @@ function ShowDetail(id)
   text(STATUS_TEXT[st]:format(q[3] or 0), F_SMALL, st == "done" and { 0.05, 0.45, 0.05 } or INK_SOFT)
   local zone = ZoneName(ZoneOf(q))
   text(("|cff5a4020Zone:|r %s"):format(zone), F_SMALL, INK_SOFT, 6)
+  if q.checked then text(q.isNew and "|cff1a6a1aNew quest - recorded in game|r" or "|cff1a6a1aChecked in game|r", F_SMALL, INK_SOFT) end
   place("Starts:", q[13], q[18], q[19], q[20])
   if q[14] ~= q[13] or q[21] ~= q[18] or q[22] ~= q[19] then place("Turn in:", q[14], q[21], q[22], q[23])
   elseif Name(q[14]) then text("|cff5a4020Turn in:|r same place", F_SMALL, INK_SOFT) end
@@ -2270,6 +2278,7 @@ SlashCmdList.PINTSQUESTBOOK = function(msg)
     db.hidden = {}; BuildIndex(); QB.Refresh()
     print(("|cffd4a24cQuest Book|r: %d hidden quest%s restored."):format(n, n == 1 and "" or "s")); return
   end
+  if msg:match("^rec") then if NS.RecorderCmd then NS.RecorderCmd(msg:match("^rec%a*%s*(.*)$")) end; return end
   if msg == "options" then if NS.ToggleOptions then NS.ToggleOptions() end; return end
   if msg:match("^born") then QB.SetBorn(msg:match("^born%s+(.+)$")); return end
   if msg == "mapcheck" or msg == "mismatch" or msg == "map" or msg == "check" then NS.MapCheck(); return end
@@ -2293,6 +2302,7 @@ NS.Data = function() return D end
 NS.Children, NS.Valid = children, valid
 NS.Status, NS.IsTrivial, NS.IsDone, NS.ZoneName, NS.ZoneOf = Status, IsTrivial, IsDone, ZoneName, ZoneOf
 NS.RefreshStatus = RefreshStatus
+NS.Rebuild = function() BuildIndex(); QB.Refresh() end
 NS.DB = function() return db end
 NS.ZoneStats = function() return ZoneStats() end
 NS.Win = function() return win end
@@ -2337,6 +2347,7 @@ ev:SetScript("OnEvent", function(self, event, arg1)
     db.firstSeen = db.firstSeen or {}
     local ck = (GetRealmName() or "") .. "." .. (UnitName("player") or "")
     db.firstSeen[ck] = db.firstSeen[ck] or time()
+    if NS.ApplyRecorded then NS.ApplyRecorded() end   -- quests checked in game replace the built-in data
     BuildIndex()
     CheckHolidays()
     if C_Calendar and C_Calendar.OpenCalendar then

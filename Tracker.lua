@@ -135,13 +135,21 @@ end
 -- hide or restore Blizzard's quest watch list
 local hooked
 local function BlizzTracker(hide)
-  local f = _G.QuestWatchFrame
+  -- (ObjectiveTrackerFrame: the modern client's tracker, WoW Forever; it can hold item buttons, so in combat it's only faded)
+  local f = _G.QuestWatchFrame or _G.ObjectiveTrackerFrame
   if not f then return end
+  local function Gone(self)
+    if InCombatLockdown() and self == _G.ObjectiveTrackerFrame then self:SetAlpha(0) else self:Hide() end
+  end
   if not hooked then
     hooked = true
-    f:HookScript("OnShow", function(self) local d = db(); if d and d.tracker and d.hideBlizzTracker then self:Hide() end end)
+    f:HookScript("OnShow", function(self) local d = db(); if d and d.tracker and d.hideBlizzTracker then Gone(self) end end)
   end
-  if hide then f:Hide() elseif GetNumQuestWatches and GetNumQuestWatches() > 0 then f:Show() end
+  if hide then Gone(f)
+  else
+    f:SetAlpha(1)
+    if f == _G.ObjectiveTrackerFrame or (GetNumQuestWatches and GetNumQuestWatches() > 0) then f:Show() end
+  end
 end
 
 function NS.RefreshTracker()

@@ -3,6 +3,27 @@
 -- Player vs. Player, Professions, Reputation, World Events and Feats of Strength. Progressive deeds come in tiers,
 -- meta deeds need a set of others, and feats are rare or one-of-a-kind.
 local ADDON, NS = ...
+-- Compatibility: WoW Forever runs on the modern game client, where these older functions moved or were renamed.
+local GetNumSkillLines, GetSkillLineInfo = GetNumSkillLines, GetSkillLineInfo
+if not GetNumSkillLines and GetProfessions then
+	local lines = {}
+	GetNumSkillLines = function()
+		wipe(lines)
+		local p = { GetProfessions() }
+		for k = 1, 6 do
+			if p[k] then
+				local name, _, rank, maxRank = GetProfessionInfo(p[k])
+				if name then lines[#lines + 1] = { name, rank, maxRank } end
+			end
+		end
+		return #lines
+	end
+	GetSkillLineInfo = function(i)
+		local l = lines[i]
+		if l then return l[1], false, false, l[2], 0, 0, l[3] end
+	end
+end
+
 local function db() return NS.DB and NS.DB() end
 local function CK() return (GetRealmName() or "") .. "." .. (UnitName("player") or "") end
 local function Say(msg) print("|cffd4a24cQuest Book|r: " .. msg) end
@@ -294,10 +315,21 @@ end
 
 local ev = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_LEVEL_UP", "QUEST_TURNED_IN", "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED", "ZONE_CHANGED_INDOORS",
-  "PLAYER_MONEY", "SKILL_LINES_CHANGED", "UPDATE_FACTION", "PLAYER_PVP_KILLS_CHANGED", "TIME_PLAYED_MSG", "COMBAT_LOG_EVENT_UNFILTERED" }) do
-  pcall(ev.RegisterEvent, ev, e)
+  "PLAYER_MONEY", "SKILL_LINES_CHANGED", "UPDATE_FACTION", "PLAYER_PVP_KILLS_CHANGED", "TIME_PLAYED_MSG", "COMBAT_LOG_EVENT_UNFILTERED",
+  "ENCOUNTER_END" }) do
+  -- the combat log is off-limits to add-ons on the modern client (WoW Forever); boss kills come from ENCOUNTER_END there
+  if not (type(issecretvalue) == "function" and e == "COMBAT_LOG_EVENT_UNFILTERED") then pcall(ev.RegisterEvent, ev, e) end
 end
-ev:SetScript("OnEvent", function(_, event, a1)
+ev:SetScript("OnEvent", function(_, event, a1, a2, a3, a4, a5)
+  if event == "ENCOUNTER_END" then
+    -- (encounterID, name, difficulty, group size, success)
+    local name = a2
+    if a5 == 1 and type(name) == "string" and not (type(issecretvalue) == "function" and issecretvalue(name)) and BOSS[name] then
+      local st = State()
+      if st and not st.stats.bosses[name] then st.stats.bosses[name] = time(); Soon(1) end
+    end
+    return
+  end
   if event == "COMBAT_LOG_EVENT_UNFILTERED" then
     local _, sub, _, _, _, _, _, _, destName = CombatLogGetCurrentEventInfo()
     if sub == "UNIT_DIED" and destName and BOSS[destName] and IsInInstance() then

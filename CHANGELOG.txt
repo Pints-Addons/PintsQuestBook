@@ -1,5 +1,18 @@
 Pint's Quest Book - Changelog
 
+v1.7
+- New: the quest recorder. Every quest you pick up or hand in is written down as the game shows it - who gives it
+  and where, level, zone, objectives, rewards, money, the XP you really got, and who you hand it in to.
+- Recorded quests replace the book's built-in data, so the book matches the realm you play on (made for WoW Forever,
+  where many quests changed). Quests the book didn't have are added, and new zones get their own chapter.
+- Quests checked in game say so in the book and in their tooltip.
+- /qb rec shows what's been recorded; /qb rec off pauses it.
+- Works on WoW Forever (the modern game client). Classic Era is unchanged:
+  the quest log, watches and tracker use the modern quest functions; on the map only quests checked by the
+  recorder get pins ("Unchecked quests" option shows the rest); rare kills come from the rare dying or its loot,
+  and dungeon deeds from boss encounters, since the combat log can't be read there.
+- Map pins no longer cause blocked-action errors on the world map.
+
 v1.6
 - First public release as Pint's Quest Book.
 - The Dungeon Journal is now its own add-on, Pint's Dungeon Journal; /qb journal opens it when installed.

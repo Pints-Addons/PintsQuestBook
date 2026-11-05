@@ -1,6 +1,27 @@
 -- Pints Storybook: world map icons for townsfolk, trainers, vendors, mailboxes and quests (! to pick up, ? to turn in).
 -- Pins sit on Blizzard's world map through its own pin system (zoom-safe). Filters: the book button on the map.
 local ADDON, NS = ...
+-- Compatibility: WoW Forever runs on the modern game client, where these older functions moved or were renamed.
+local GetNumSkillLines, GetSkillLineInfo = GetNumSkillLines, GetSkillLineInfo
+if not GetNumSkillLines and GetProfessions then
+	local lines = {}
+	GetNumSkillLines = function()
+		wipe(lines)
+		local p = { GetProfessions() }
+		for k = 1, 6 do
+			if p[k] then
+				local name, _, rank, maxRank = GetProfessionInfo(p[k])
+				if name then lines[#lines + 1] = { name, rank, maxRank } end
+			end
+		end
+		return #lines
+	end
+	GetSkillLineInfo = function(i)
+		local l = lines[i]
+		if l then return l[1], false, false, l[2], 0, 0, l[3] end
+	end
+end
+
 local function db() return NS.DB and NS.DB() end
 
 local ICON = {
@@ -107,6 +128,15 @@ local function Wanted(info, m, fac, classID, profs)
 end
 
 ---------------------------------------------------------------- quest pins (grouped by giver)
+-- WoW Forever changed or removed many quests, and the built-in data is Classic's: there, only quests the book has
+-- checked in game (the recorder) get icons, unless "unchecked quests" is ticked. A giver who didn't offer a quest
+-- they're listed for (the recorder notes that) never shows it.
+local FOREVER = type(issecretvalue) == "function"
+local function PinOK(q, m)
+  if q.notHere then return false end
+  if FOREVER and not q.checked and not m.qunverified then return false end
+  return true
+end
 local function QuestPins(mapID, m)
   local D = NS.Data and NS.Data()
   if not D then return {} end
@@ -126,7 +156,9 @@ local function QuestPins(mapID, m)
   for id in pairs(NS.Valid) do
     local q = D.quests[id]
     local st = NS.Status(id)
-    if m.qavail and st == "available" and (m.qlow or not NS.IsTrivial(q[2])) then
+    if not PinOK(q, m) then
+      -- (left off the map)
+    elseif m.qavail and st == "available" and (m.qlow or not NS.IsTrivial(q[2])) then
       put("qavail", id, q[18], q[19], q[20], D.names[q[13]])
     elseif m.qturn and st == "ready" then
       put("qturn", id, q[21], q[22], q[23], D.names[q[14]])
@@ -139,6 +171,10 @@ end
 
 ---------------------------------------------------------------- the pin
 PintsStorybookPinMixin = CreateFromMixins and MapCanvasPinMixin and CreateFromMixins(MapCanvasPinMixin) or {}
+-- the map asks every pin to pass mouse buttons through, which add-on pins aren't allowed to do in combat on the
+-- modern client (WoW Forever) - "blocked from an action". Our pins don't need it: say yes and do nothing.
+function PintsStorybookPinMixin:SetPassThroughButtons() end
+function PintsStorybookPinMixin:SetPropagateMouseClicks() end
 function PintsStorybookPinMixin:OnLoad()
   if self.UseFrameLevelType then pcall(self.UseFrameLevelType, self, "PIN_FRAME_LEVEL_AREA_POI") end
   if self.SetScalingLimits then pcall(self.SetScalingLimits, self, 1, 0.85, 1.15) end
@@ -310,6 +346,7 @@ function NS.ToggleMapOptions(anchor)
     add(16, -104, "Quests to turn in", ICON.qturn, function() return m.qturn end, function(v) m.qturn = v end)
     add(16, -124, "Low-level quests", ICON.qavail, function() return m.qlow end, function(v) m.qlow = v end)
     add(344, -272, "Quest objective areas", nil, function() return m.qareas end, function(v) m.qareas = v end)
+    if FOREVER then add(344, -292, "Unchecked quests", ICON.qavail, function() return m.qunverified end, function(v) m.qunverified = v end) end
     head(16, -152, "Townsfolk")
     for i, k in ipairs(NS.MAP_TOWN) do
       add(16, -152 - i * 20, LABEL[k], ICON[k], function() return m[k] end, function(v) m[k] = v end)
@@ -459,7 +496,9 @@ local function Gather(cont, px, py)
     for id in pairs(NS.Valid) do
       local q = D.quests[id]
       local st = NS.Status(id)
-      if m.qavail and st == "available" and (m.qlow or not NS.IsTrivial(q[2])) then put("qavail", id, q[18], q[19], q[20], D.names[q[13]])
+      if not PinOK(q, m) then
+        -- (left off the map)
+      elseif m.qavail and st == "available" and (m.qlow or not NS.IsTrivial(q[2])) then put("qavail", id, q[18], q[19], q[20], D.names[q[13]])
       elseif m.qturn and st == "ready" then put("qturn", id, q[21], q[22], q[23], D.names[q[14]]) end
     end
   end

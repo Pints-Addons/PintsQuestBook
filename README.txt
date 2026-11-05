@@ -1,4 +1,4 @@
-Pint's Quest Book v1.6 - every quest in a zone, opened like a storybook
+Pint's Quest Book v1.7 - every quest in a zone, opened like a storybook
 (WoW Classic Era / Hardcore / Forever)
 
 REQUIRES
@@ -36,6 +36,12 @@ ON YOUR SCREEN
   - /qb find <name or service> points an arrow to the nearest one (e.g. /qb find repair).
   - Optional: the quest log key opens the book instead of the game's quest log.
 
+QUEST RECORDER
+  Every quest you pick up or hand in is recorded as the game shows it: who gives it and where,
+  level, zone, objectives, rewards, money, the XP you got, and who you hand it in to.
+  Recorded quests replace the built-in data, so the book matches your realm; quests the book
+  didn't have are added, and new zones get their own chapter. They show "Checked in game".
+
 COMMANDS
   /qb                 open or close the book      /qb log        your current quests
   /qb contents        the contents page           /qb deeds      Achievements
@@ -44,6 +50,7 @@ COMMANDS
   /qb tracker         tracker on / off            /qb auto       auto accept / turn-in on / off
   /qb options         options                     /qb unhide     bring back quests you hid
   /qb rarealerts      rare alerts on / off
+  /qb rec             what the recorder has saved  (/qb rec off, /qb rec on, /qb rec quiet)
 
   The Dungeon Journal is its own add-on: Pint's Dungeon Journal (/dj).
 
@@ -53,3 +60,7 @@ LICENSE
 
 Pint's Quest Book - by Jake (Pint's Add-ons), built with Claude.
 World of Warcraft names and game data are the property of Blizzard Entertainment.
+
+FEEDBACK
+  Report a bug or suggest an idea: https://github.com/Pints-Addons/PintsQuestBook/issues
+  Source code: https://github.com/Pints-Addons/PintsQuestBook

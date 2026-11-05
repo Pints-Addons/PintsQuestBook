@@ -4,6 +4,17 @@
 --   * An alert (sound, banner, click to target) when a rare shows up on your nameplates, mouseover or target.
 -- Data: RareData.lua (CMaNGOS Classic world database).
 local ADDON, NS = ...
+-- Compatibility: WoW Forever runs on the modern game client, where these older functions moved or were renamed.
+local GetItemInfo = GetItemInfo or (C_Item and C_Item.GetItemInfo)
+local GetItemIcon = GetItemIcon or (C_Item and C_Item.GetItemIconByID)
+local MouseIsOver = MouseIsOver or function(f, top, bottom, left, right)
+	if not (f and f.IsMouseOver) then return false end
+	-- (the modern client refuses to measure some frames, and may answer "secret": both count as "no")
+	local ok, r = pcall(f.IsMouseOver, f, top or 0, bottom or 0, left or 0, right or 0)
+	if not ok or (type(issecretvalue) == "function" and issecretvalue(r)) then return false end
+	return r and true or false
+end
+
 local function db() return NS.DB and NS.DB() end
 local function CK() return (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?") end
 local function Say(msg) print("|cffd4a24cQuest Book|r: " .. msg) end
@@ -284,7 +295,11 @@ end
 ---------------------------------------------------------------- alerts
 local banner, targetBtn
 local lastAlert = {}
+-- the modern game client (WoW Forever) can keep a unit's id or state "secret": treat those as unknown
+local SECRET = type(issecretvalue) == "function"
+local function Known(v) if SECRET and issecretvalue(v) then return nil end return v end
 local function NpcID(guid)
+  guid = Known(guid)
   if not guid then return end
   local kind, _, _, _, _, id = strsplit("-", guid)
   if kind == "Creature" or kind == "Vehicle" then return tonumber(id) end
@@ -318,7 +333,7 @@ local function Alert(id, unit)
   local D = R(); local r = D and D.rares[id]; if not r then return end
   local rec = Rec()
   rec.seen[id] = time()
-  if unit and UnitIsDead(unit) then return end
+  if unit and Known(UnitIsDead(unit)) then return end
   local d = db()
   if d and d.rareAlerts == false then return end
   if lastAlert[id] and GetTime() - lastAlert[id] < 300 then return end
@@ -335,20 +350,70 @@ local function Alert(id, unit)
   if FlashClientIcon then FlashClientIcon() end
   Say(("rare nearby - |cffff8020%s|r (level %s)."):format(r[1], LevelText(r)))
 end
-local function Check(unit)
-  local id = NpcID(UnitGUID(unit))
-  if id and R() and R().rares[id] then Alert(id, unit) end
+-- a rare you (or your group) killed: counted once per spawn
+local function CountKill(guid, id)
+  local rec = Rec()
+  if rec.lastKill == guid then return end
+  rec.lastKill = guid
+  local s = rec.slain[id] or { n = 0 }
+  s.n, s.t = s.n + 1, time()
+  rec.slain[id] = s
+  if banner and banner.id == id then banner:Hide() end
+  Say(("|cffff8020%s|r slain - noted in the Rare Spawns chapter."):format(R().rares[id][1]))
 end
+
+-- rares seen alive lately: the modern client has no combat log for add-ons, so their deaths are spotted by
+-- looking at them (target, mouse-over, nameplates) and by looting them
+local watch, watching = {}, 0
+local function Check(unit)
+  local guid = Known(UnitGUID(unit))
+  local id = NpcID(guid)
+  if id and R() and R().rares[id] then
+    if not Known(UnitIsDead(unit)) and not watch[guid] then watch[guid] = id; watching = watching + 1 end
+    Alert(id, unit)
+  end
+end
+local function Look(unit)
+  local guid = Known(UnitGUID(unit))
+  local id = guid and watch[guid]
+  if id and Known(UnitIsDead(unit)) then
+    watch[guid] = nil; watching = watching - 1
+    if not Known(UnitIsTapDenied(unit)) then CountKill(guid, id) end   -- yours (or your group's), not someone else's
+  end
+end
+local poll = CreateFrame("Frame")
+local acc = 0
+poll:SetScript("OnUpdate", function(_, dt)
+  if watching <= 0 then return end
+  acc = acc + dt; if acc < 0.5 then return end; acc = 0
+  Look("target"); Look("mouseover")
+  for i = 1, 40 do if UnitExists("nameplate" .. i) then Look("nameplate" .. i) end end
+end)
 
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("NAME_PLATE_UNIT_ADDED"); ev:RegisterEvent("PLAYER_TARGET_CHANGED"); ev:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
-ev:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED"); ev:RegisterEvent("PLAYER_REGEN_ENABLED")
+ev:RegisterEvent("PLAYER_REGEN_ENABLED"); ev:RegisterEvent("LOOT_OPENED")
+if not SECRET then ev:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED") end   -- off-limits to add-ons on the modern client
 ev:SetScript("OnEvent", function(_, e, a1)
   if e == "PLAYER_REGEN_ENABLED" then
     if targetBtn and not (banner and banner:IsShown()) then targetBtn:Hide() end
   elseif e == "NAME_PLATE_UNIT_ADDED" then Check(a1)
   elseif e == "PLAYER_TARGET_CHANGED" then Check("target")
   elseif e == "UPDATE_MOUSEOVER_UNIT" then Check("mouseover")
+  elseif e == "LOOT_OPENED" then
+    -- looting a rare's body counts it too
+    if not (GetNumLootItems and GetLootSourceInfo and R()) then return end
+    for slot = 1, GetNumLootItems() do
+      local src = { GetLootSourceInfo(slot) }
+      for i = 1, #src, 2 do
+        local guid = Known(src[i])
+        local id = NpcID(guid)
+        if id and R().rares[id] then
+          if watch[guid] then watch[guid] = nil; watching = watching - 1 end
+          CountKill(guid, id)
+        end
+      end
+    end
   elseif e == "COMBAT_LOG_EVENT_UNFILTERED" then
     local _, sub, _, src, _, _, _, dest = CombatLogGetCurrentEventInfo()
     if sub ~= "PARTY_KILL" and sub ~= "UNIT_DIED" then return end
@@ -356,15 +421,7 @@ ev:SetScript("OnEvent", function(_, e, a1)
     if not id or not R() or not R().rares[id] then return end
     -- count it if you (or your group) killed it
     if sub == "UNIT_DIED" and not (UnitGUID("target") == dest) then return end
-    local rec = Rec()
-    local key = dest
-    if rec.lastKill == key then return end
-    rec.lastKill = key
-    local s = rec.slain[id] or { n = 0 }
-    s.n, s.t = s.n + 1, time()
-    rec.slain[id] = s
-    if banner and banner.id == id then banner:Hide() end
-    Say(("|cffff8020%s|r slain - noted in the Rare Spawns chapter."):format(R().rares[id][1]))
+    CountKill(dest, id)
   end
 end)
 
