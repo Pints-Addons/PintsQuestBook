@@ -5,7 +5,7 @@
 -- Data: QuestAreas.lua (CMaNGOS Classic world database).
 local ADDON, NS = ...
 local function db() return NS.DB and NS.DB() end
-local function CK() return (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?") end
+local function CK() return ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "?") .. "-" .. (GetRealmName() or "?") end
 
 local PALETTE = {
   { 1.00, 0.25, 0.25 }, { 0.25, 0.60, 1.00 }, { 0.30, 0.95, 0.30 }, { 1.00, 0.82, 0.10 }, { 0.80, 0.35, 1.00 },

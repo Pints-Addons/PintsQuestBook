@@ -1,5 +1,10 @@
 Pint's Quest Book - Changelog
 
+v1.7.2
+- WoW Forever: characters are known by their full name (first and second, e.g. "Pint Waterboy"), so characters that
+  share a first name no longer share one record. Classic Era is unchanged.
+- The cover shows your full name on WoW Forever.
+
 v1.7.1
 - Tracker: objectives are indented under their quest's title.
 - Tracker: a failed quest says (Failed) in red beside its title.

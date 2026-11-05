@@ -16,7 +16,7 @@ local MouseIsOver = MouseIsOver or function(f, top, bottom, left, right)
 end
 
 local function db() return NS.DB and NS.DB() end
-local function CK() return (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?") end
+local function CK() return ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "?") .. "-" .. (GetRealmName() or "?") end
 local function Say(msg) print("|cffd4a24cQuest Book|r: " .. msg) end
 
 local SKULL = "Interface\\TargetingFrame\\UI-TargetingFrame-Skull"

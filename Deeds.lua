@@ -25,7 +25,7 @@ if not GetNumSkillLines and GetProfessions then
 end
 
 local function db() return NS.DB and NS.DB() end
-local function CK() return (GetRealmName() or "") .. "." .. (UnitName("player") or "") end
+local function CK() return (GetRealmName() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
 local function Say(msg) print("|cffd4a24cQuest Book|r: " .. msg) end
 local I = function(n) return "Interface\\Icons\\" .. n end
 
