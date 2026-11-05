@@ -60,6 +60,17 @@ local function band(a, b)
 end
 local function MyFaction() return (UnitFactionGroup("player") == "Horde") and 1 or 2 end
 local function Q(id) return D and D.quests[id] end
+-- Shift-click a quest: its link goes into the chat box (opening one if none is open)
+function QB.LinkQuest(id)
+  if not id or id <= 0 then return end
+  local q = Q(id)
+  local title = (C_QuestLog and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(id)) or (q and q[1])
+  if not title then return end
+  local level = (q and q[3]) or 0
+  local link = ("|cffffff00|Hquest:%d:%d|h[%s]|h|r"):format(id, level, title)
+  if not (ChatEdit_InsertLink and ChatEdit_InsertLink(link)) and ChatFrame_OpenChat then ChatFrame_OpenChat(link) end
+  return true
+end
 local function ZoneOf(q) local z = q[4]; return NS.REMAP[z] or z end
 local function ZoneName(id)
   if not id then return "?" end
@@ -666,6 +677,7 @@ local function ListRow(i)
   r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   r:SetScript("OnClick", function(self, button)
     if self.header then return end
+    if button == "LeftButton" and IsShiftKeyDown() and self.id and self.id > 0 then QB.LinkQuest(self.id); return end
     if button == "RightButton" and IsShiftKeyDown() and self.id then
       db.hidden = db.hidden or {}
       db.hidden[self.id] = true
@@ -696,7 +708,7 @@ local function ListRow(i)
     local party = PartyOn(self.id)
     if #party > 0 then GameTooltip:AddLine("Also on it: " .. table.concat(party, ", "), 0.4, 1, 0.4) end
     if not self.inZone then GameTooltip:AddLine("Part of this chain, picked up in " .. ZoneName(ZoneOf(q)), 0.7, 0.7, 0.7) end
-    GameTooltip:AddLine("Shift-right-click: hide this quest", 0.6, 0.6, 0.6)
+    GameTooltip:AddLine("Shift-click: link it in chat   Shift-right-click: hide this quest", 0.6, 0.6, 0.6)
     GameTooltip:Show()
   end)
   r:SetScript("OnLeave", function() GameTooltip:Hide() end)

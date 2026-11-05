@@ -50,6 +50,7 @@ local function Line(i)
       NS.RefreshTracker(); return
     end
     if not self.qid then return end
+    if button == "LeftButton" and IsShiftKeyDown() and PintsQuestBook and PintsQuestBook.LinkQuest then PintsQuestBook.LinkQuest(self.qid); return end
     if IsControlKeyDown() and not self.future and NS.CycleQuestColor then
       NS.CycleQuestColor(self.qid); NS.RefreshTracker(); if NS.RefreshMap then NS.RefreshMap() end
       return

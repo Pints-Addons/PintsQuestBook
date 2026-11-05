@@ -1,5 +1,8 @@
 Pint's Quest Book - Changelog
 
+v1.7.3
+- Shift-click a quest in the tracker or the book's quest list to link it in chat.
+
 v1.7.2
 - WoW Forever: characters are known by their full name (first and second, e.g. "Pint Waterboy"), so characters that
   share a first name no longer share one record. Classic Era is unchanged.
