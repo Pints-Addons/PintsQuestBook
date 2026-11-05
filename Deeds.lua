@@ -199,7 +199,10 @@ local function Context(st)
   local D = NS.Data and NS.Data()
   local done = {}
   if GetQuestsCompleted then local ok, t = pcall(GetQuestsCompleted); if ok and type(t) == "table" then done = t end end
-  local n = 0; for _ in pairs(done) do n = n + 1 end
+  -- WoW Forever's list of completed quests also holds the game's hidden tracking flags (hundreds of them), so there
+  -- only quests the book knows (its data plus what the recorder wrote down) are counted
+  local modern = type(issecretvalue) == "function"
+  local n = 0; for qid in pairs(done) do if not modern or (D and D.quests[qid]) then n = n + 1 end end
   c.questsDone = n
   c.zoneCount, c.zoneDone = {}, {}
   if NS.ZoneStats then c.zoneCount, c.zoneDone = NS.ZoneStats() end
@@ -273,6 +276,16 @@ local function Evaluate(silent)
   if not (NS.Data and NS.Data()) then return end
   Build()
   local c = Context(st)
+  -- once on WoW Forever: take back quest-count deeds earned from the hidden flags before they were left out
+  if type(issecretvalue) == "function" and not st.questFix then
+    st.questFix = true
+    for _, def in ipairs(DEEDS) do
+      if st.earned[def.id] and (def.id:match("^quests%d+$") or def.id == "featScholar") then
+        local cur, tgt = Progress(def, c, st)
+        if cur and tgt and cur < tgt then st.earned[def.id] = nil end
+      end
+    end
+  end
   local firstRun = not st.init
   local fresh = {}
   for pass = 1, 2 do                        -- second pass lets meta deeds see what the first pass just earned

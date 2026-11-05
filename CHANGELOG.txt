@@ -1,5 +1,11 @@
 Pint's Quest Book - Changelog
 
+v1.7.1
+- Tracker: objectives are indented under their quest's title.
+- Tracker: a failed quest says (Failed) in red beside its title.
+- Deeds: on WoW Forever, the quest-count deeds (Tales Told) only count real quests - the game's hidden tracking
+  flags no longer count, and deeds wrongly earned from them are taken back.
+
 v1.7
 - New: the quest recorder. Every quest you pick up or hand in is written down as the game shows it - who gives it
   and where, level, zone, objectives, rewards, money, the XP you really got, and who you hand it in to.

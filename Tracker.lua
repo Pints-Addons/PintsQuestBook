@@ -172,16 +172,17 @@ function NS.RefreshTracker()
       count = count + 1
       local r, g, b = DiffColor(level)
       local done = (isComplete == 1 or isComplete == true)
+      local failed = (isComplete == -1)
       local later = (D and qid and NS.Valid[qid] ~= nil) and Later(qid) or {}
       local sw = (qid and NS.HasAreas and NS.HasAreas(qid)) and NS.QuestSwatch(qid) or ""
       rows[#rows + 1] = { qid = qid, logIndex = i, title = title, chain = #later,
         text = sw .. ("|cff%02x%02x%02x[%d] %s|r%s%s"):format(r * 255, g * 255, b * 255, level or 0, title,
-          done and "  |cff40ff40(Complete)|r" or "", #later > 0 and ("  |cff8080a0+" .. #later .. "|r") or "") }
+          failed and "  |cffff2020(Failed)|r" or done and "  |cff40ff40(Complete)|r" or "", #later > 0 and ("  |cff8080a0+" .. #later .. "|r") or "") }
       local nb = GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(i) or 0
-      if nb == 0 and done then rows[#rows + 1] = { text = "    |cff40ff40Ready to turn in|r", qid = qid, logIndex = i } end
+      if nb == 0 and done and not failed then rows[#rows + 1] = { obj = true, text = "|cff40ff40Ready to turn in|r", qid = qid, logIndex = i } end
       for j = 1, nb do
         local txt, _, finished = GetQuestLogLeaderBoard(j, i)
-        if txt then rows[#rows + 1] = { text = "    " .. (finished and "|cff40ff40" or "|cffd0d0d0") .. txt .. "|r", qid = qid, logIndex = i } end
+        if txt then rows[#rows + 1] = { obj = true, text = (finished and "|cff40ff40" or "|cffd0d0d0") .. txt .. "|r", qid = qid, logIndex = i } end
       end
       if #later > 0 and d.trackerExpanded[qid] then
         for _, l in ipairs(later) do
@@ -227,7 +228,7 @@ function NS.RefreshTracker()
       b.text:SetText(row.text)
     else
       b.tog:Hide()
-      b.text:SetPoint("LEFT", row.text:find("^    ") and 0 or 16, 0); b.text:SetPoint("RIGHT", 0, 0)
+      b.text:SetPoint("LEFT", row.obj and 28 or 16, 0); b.text:SetPoint("RIGHT", 0, 0)
       b.text:SetText(row.text)
     end
     b:Show()
