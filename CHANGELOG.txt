@@ -1,5 +1,10 @@
 Pint's Quest Book - Changelog
 
+v1.7.8
+- WoW Forever: Ruins of Lordaeron is in the Dungeons & Raids menu, and quests you recorded there before are filed under it.
+- WoW Forever: the City of Dalaran dungeon (levels 28-35) and its 13 quests are built in - the Alliance and Horde
+  Dalaran Sewers Key chains in order, the other dungeon quests, who gives them and their rewards.
+
 v1.7.7
 - WoW Forever: the Ruins of Lordaeron dungeon's 15 quests for both factions are built in - who gives them, where
   you hand them in, the Unending Torment chain in order, and their rewards.

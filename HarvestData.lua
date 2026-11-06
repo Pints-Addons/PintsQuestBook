@@ -1,4 +1,4 @@
--- Gathered in WoW Forever by Pint's Add-ons (ollie-2026-11-05, ollie-2026-11-06, macbook-2026-11-05, Ruins of Lordaeron (published beta guides)) - quests, quest givers and where they stand.
+-- Gathered in WoW Forever by Pint's Add-ons (ollie-2026-11-05, ollie-2026-11-06, macbook-2026-11-05, Ruins of Lordaeron (published beta guides), City of Dalaran (published beta guides)) - quests, quest givers and where they stand.
 -- Applied at login like quests you recorded yourself; your own recordings come first.
 PintsQuestHarvest = { quests = {
 [8]={["f"]=1,["l"]=5,["t"]="A Rogue's Deal",["zn"]="Deathknell",["ch"]="4604:5,159:5",["e"]={"Innkeeper Renee",0,2267,243.6},["it"]="",["m"]=0,["xpLvl"]=7,["xpRaw"]=110,["xpTurnIn"]=true},
@@ -122,6 +122,14 @@ PintsQuestHarvest = { quests = {
 [92415]={["t"]="Remember That I Love You",["l"]=22,["ml"]=15,["f"]=2,["zn"]="Ruins of Lordaeron",["ty"]=81,["s"]={"Last Scrawlings of Edward Heartweaver"},["e"]={"Orphan Matron Nightingale"}},
 [92421]={["f"]=1,["l"]=22,["t"]="Light's Justice",["zn"]="Ruins of Lordaeron",["ml"]=15,["ty"]=81,["s"]={"Morbin Lightbane"},["e"]={"Morbin Lightbane"},["ch"]="279874:1,279875:1"},
 [92422]={["t"]="The Wrath of Rath'mael",["l"]=22,["ml"]=15,["f"]=1,["zn"]="Ruins of Lordaeron",["ty"]=81,["s"]={"Deathguard Kristof"},["e"]={"Deathguard Kristof"},["ch"]="251533:1,251534:1"},
+[92432]={["t"]="An Alarming Request",["l"]=33,["ml"]=30,["f"]=2,["zn"]="City of Dalaran",["ty"]=81,["s"]={"Emissary Jacques"},["e"]={"Image of Archmage Modera"}},
+[92434]={["t"]="Blood in the Streets",["l"]=34,["ml"]=30,["f"]=1,["zn"]="City of Dalaran",["ty"]=81,["p"]=93680,["s"]={"Magus Wordeen Voidglare"},["e"]={"Image of Archmage Modera"}},
+[92456]={["t"]="A Green Sample",["l"]=33,["ml"]=24,["f"]=2,["zn"]="City of Dalaran",["ty"]=81,["s"]={"Shylamiir"},["e"]={"Shylamiir"},["ch"]="279835:1,279836:1"},
+[92457]={["t"]="Starving Arcane",["l"]=33,["ml"]=24,["f"]=2,["zn"]="City of Dalaran",["ty"]=81,["s"]={"Image of Archmage Modera"},["e"]={"Image of Archmage Modera"},["ch"]="279837:1,279838:1"},
+[92458]={["t"]="Heart of Disruption",["l"]=33,["ml"]=24,["f"]=2,["zn"]="City of Dalaran",["ty"]=81,["p"]=92432,["s"]={"Image of Archmage Modera"},["e"]={"Image of Archmage Modera"},["ch"]="279839:1,279840:1,279841:1"},
+[92459]={["t"]="Friend of the Kirin Tor",["l"]=33,["ml"]=24,["f"]=2,["zn"]="City of Dalaran",["p"]=92458,["s"]={"Image of Archmage Modera"},["e"]={"Archmage Celindra"}},
+[92489]={["t"]="Power Overwhelming",["l"]=33,["ml"]=24,["f"]=2,["zn"]="City of Dalaran",["ty"]=81,["s"]={"High Sorcerer Andromath"},["e"]={"High Sorcerer Andromath"},["ch"]="251962:1,279849:1"},
+[93680]={["t"]="Key to the City",["l"]=33,["ml"]=30,["f"]=1,["zn"]="City of Dalaran",["s"]={"Magus Wordeen Voidglare"},["e"]={"Magus Wordeen Voidglare"}},
 [95161]={["t"]="Remember That I Love You",["l"]=22,["ml"]=15,["f"]=2,["zn"]="Ruins of Lordaeron",["p"]=92415,["s"]={"Orphan Matron Nightingale"},["e"]={"Avette Fellwood"},["it"]="279870:1"},
 [95189]={["t"]="Crest of Lordaeron",["l"]=22,["ml"]=16,["f"]=2,["zn"]="Ruins of Lordaeron",["ty"]=81,["s"]={"Crest of Lordaeron (item)"},["e"]={"Lady Dena Kennedy"},["it"]="280567:1"},
 [95195]={["t"]="Bloodied Insignia",["l"]=22,["ml"]=16,["f"]=2,["zn"]="Ruins of Lordaeron",["ty"]=81,["s"]={"Bloodied Insignia (item)"},["e"]={"General Marcus Jonathan"},["ch"]="279868:1,279869:1"},
@@ -140,6 +148,10 @@ PintsQuestHarvest = { quests = {
 [96825]={["ch"]="",["e"]={"Cook Torka",1,306,-4664.9},["f"]=1,["it"]="",["l"]=6,["m"]=0,["t"]="This Fruit Could Bite Back",["xpLvl"]=10,["xpRaw"]=550,["xpTurnIn"]=true,["z"]=14,["zn"]="Durotar"},
 [96873]={["f"]=1,["l"]=8,["t"]="A Pain in the Neck",["z"]=14,["zn"]="Durotar"},
 [96876]={["ch"]="",["e"]={"Ukor",1,-598.5,-4715},["f"]=1,["it"]="",["l"]=8,["m"]=110,["t"]="Ukor's Lost Pack",["xpLvl"]=9,["xpRaw"]=875,["xpTurnIn"]=true,["z"]=14,["zn"]="Durotar"},
+[96984]={["t"]="Heart of Disruption",["l"]=33,["ml"]=24,["f"]=1,["zn"]="City of Dalaran",["ty"]=81,["p"]=92434,["s"]={"Image of Archmage Modera"},["e"]={"Magus Wordeen Voidglare"},["ch"]="279842:1,279843:1,279844:1"},
+[96986]={["t"]="The Grave Knight",["l"]=33,["ml"]=24,["f"]=1,["zn"]="City of Dalaran",["ty"]=81,["s"]={"Melisara"},["e"]={"Melisara"},["ch"]="251963:1,251965:1"},
+[96987]={["t"]="Opportunistic Education",["l"]=33,["ml"]=24,["f"]=1,["zn"]="City of Dalaran",["ty"]=81,["s"]={"Rexxie Copperclutch"},["ch"]="279845:1,279846:1"},
+[96988]={["t"]="Source of Power",["l"]=33,["ml"]=24,["f"]=1,["zn"]="City of Dalaran",["ty"]=81,["s"]={"Doctor Martin Felben"},["e"]={"Doctor Martin Felben"},["ch"]="279847:1,279848:1"},
 [97223]={["ch"]="",["e"]={"Xar'Ti",1,-854.6,-4882.6},["f"]=1,["it"]="281267:1",["l"]=9,["m"]=0,["t"]="Bloodtalon Matriarch",["xpLvl"]=9,["xpRaw"]=775,["xpTurnIn"]=true,["z"]=14,["zn"]="Durotar"},
 [97225]={["ch"]="",["e"]={"Master Gadrin",1,-824.9,-4924.4},["f"]=1,["it"]="281268:1",["l"]=9,["m"]=0,["t"]="Forgotten Loa Idols",["xpLvl"]=9,["xpRaw"]=775,["xpTurnIn"]=true,["z"]=14,["zn"]="Durotar"},
 [97242]={["ch"]="",["e"]={"Kor'geld",1,1950.1,-4469.7},["f"]=1,["it"]="",["l"]=15,["m"]=0,["t"]="Yelmak's Medley",["xpLvl"]=12,["xpRaw"]=110,["xpTurnIn"]=true,["z"]=1637,["zn"]="Orgrimmar"},
@@ -149,6 +161,7 @@ PintsQuestHarvest = { quests = {
 [97279]={["ch"]="",["e"]={"Kzan Thornslash",1,-589,-4106.7},["f"]=1,["it"]="",["m"]=0,["t"]="Wayward Weapons",["xpLvl"]=3,["xpRaw"]=170,["xpTurnIn"]=true},
 [97281]={["ch"]="",["e"]={"Rezlak",1,999.9,-4418.2},["f"]=1,["it"]="",["l"]=11,["m"]=0,["t"]="A Simmering Storm",["xpLvl"]=10,["xpRaw"]=875,["xpTurnIn"]=true,["z"]=14,["zn"]="Durotar"},
 [97282]={["ch"]="281274:1,287060:1",["e"]={"Rezlak",1,996.2,-4416.7},["f"]=1,["it"]="",["l"]=10,["m"]=0,["t"]="Stormy Potential",["xpLvl"]=11,["xpRaw"]=850,["xpTurnIn"]=true,["z"]=14,["zn"]="Durotar"},
+[97287]={["t"]="Shrewd Negotiations",["l"]=33,["ml"]=24,["f"]=1,["zn"]="City of Dalaran",["p"]=96984,["s"]={"Magus Wordeen Voidglare"},["e"]={"Archmage Celindra"}},
 [97288]={["t"]="Unending Torment",["l"]=21,["ml"]=16,["f"]=1,["zn"]="Ruins of Lordaeron",["ty"]=81,["s"]={"Abominable Head (item)"},["e"]={"Master Apothecary Faranell"}},
 [97289]={["t"]="Unending Torment",["l"]=21,["ml"]=16,["f"]=1,["zn"]="Ruins of Lordaeron",["p"]=97288,["s"]={"Master Apothecary Faranell"},["e"]={"Unfinished Abomination"}},
 [97290]={["t"]="Unending Torment",["l"]=21,["ml"]=16,["f"]=1,["zn"]="Ruins of Lordaeron",["p"]=97289,["s"]={"Unfinished Abomination"},["e"]={"Master Apothecary Faranell"},["ch"]="279867:1,279865:1,279864:1"},

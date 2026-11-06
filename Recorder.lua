@@ -152,7 +152,11 @@ end
 
 local function ApplyZones()
 	for name, nz in pairs(rec.zones or {}) do
-		if not NS.ZONES[nz.id] then
+		-- a zone you recorded before the book knew it (Ruins of Lordaeron, say): file its quests under the book's own entry
+		for id, z in pairs(NS.ZONES) do
+			if z[1] == name and id ~= nz.id and not NS.REMAP[nz.id] then NS.REMAP[nz.id] = id end
+		end
+		if not NS.ZONES[nz.id] and not NS.REMAP[nz.id] then
 			local group = (nz.cont == 0 and 1) or (nz.cont == 1 and 2) or 5
 			NS.ZONES[nz.id] = { name, group, 1, 60, "zone" }
 		end
@@ -161,7 +165,7 @@ local function ApplyZones()
 		for _, r in pairs(rec.quests) do
 			if r.z == nz.id and r.l then lo = math.min(lo or r.l, r.l); hi = math.max(hi or r.l, r.l) end
 		end
-		if lo then NS.ZONES[nz.id][3], NS.ZONES[nz.id][4] = lo, hi end
+		if lo and NS.ZONES[nz.id] and not NS.REMAP[nz.id] then NS.ZONES[nz.id][3], NS.ZONES[nz.id][4] = lo, hi end
 	end
 end
 

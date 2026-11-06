@@ -24,7 +24,9 @@ NS.ZONES = {
   [493] = { "Moonglade", 2, 55, 60, "zone" }, [1377] = { "Silithus", 2, 55, 60, "zone" }, [618] = { "Winterspring", 2, 55, 60, "zone" },
   [1637] = { "Orgrimmar", 2, 1, 60, "city" }, [1638] = { "Thunder Bluff", 2, 1, 60, "city" }, [1657] = { "Darnassus", 2, 1, 60, "city" },
   -- Dungeons, raids and battlegrounds
-  [2437] = { "Ragefire Chasm", 3, 13, 18, "dungeon" }, [718] = { "Wailing Caverns", 3, 17, 24, "dungeon" },
+  [2437] = { "Ragefire Chasm", 3, 13, 18, "dungeon" },
+  [-15001] = { "Ruins of Lordaeron", 3, 15, 22, "dungeon" },      -- new in WoW Forever
+  [-15002] = { "City of Dalaran", 3, 28, 35, "dungeon" },         -- new in WoW Forever [718] = { "Wailing Caverns", 3, 17, 24, "dungeon" },
   [1581] = { "The Deadmines", 3, 17, 26, "dungeon" }, [209] = { "Shadowfang Keep", 3, 22, 30, "dungeon" },
   [719] = { "Blackfathom Deeps", 3, 24, 32, "dungeon" }, [717] = { "The Stockade", 3, 24, 32, "dungeon" },
   [721] = { "Gnomeregan", 3, 29, 38, "dungeon" }, [491] = { "Razorfen Kraul", 3, 29, 38, "dungeon" },
@@ -51,6 +53,8 @@ NS.ZONES = {
   [-1] = { "Epic", 5, 60, 60, "event" }, [-221] = { "Treasure Map", 5, 1, 60, "event" },
 }
 -- sub-zones and alternate area IDs folded into the zone players think of
+-- dungeons only in WoW Forever (the modern game client) stay out of Classic Era
+if type(issecretvalue) ~= "function" then NS.ZONES[-15001] = nil; NS.ZONES[-15002] = nil end
 NS.REMAP = { [9] = 12, [24] = 12, [132] = 1, [154] = 85, [188] = 141, [702] = 141, [363] = 14, [220] = 215, [221] = 215, [35] = 33,
   [19] = 1977, [2079] = 15, [1116] = 357, [1769] = 361, [2257] = 1519, [133] = 721, [1517] = 1337, [978] = 1176, [1717] = 491,
   [2839] = 2597, [3429] = 3428, [1477] = 1417 }
