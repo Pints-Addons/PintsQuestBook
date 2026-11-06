@@ -1,5 +1,9 @@
 Pint's Quest Book - Changelog
 
+v1.7.5
+- WoW Forever: comes with quests seen in Forever - quests new to Forever, and where many quest givers stand - so the
+  book knows them before you've met them. Your own recordings still come first.
+
 v1.7.4
 - WoW Forever: no more errors when the game hides a quest giver's name; the quest is still recorded, without the giver.
 

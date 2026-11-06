@@ -171,6 +171,18 @@ function NS.ApplyRecorded()
 	rec = db.rec
 	rec.quests = rec.quests or {}
 	ApplyZones()
+	-- quests gathered in WoW Forever by Pint's Add-ons (HarvestData.lua), for the ones you haven't recorded yourself
+	local H = _G.PintsQuestHarvest
+	if H and H.quests and type(issecretvalue) == "function" then
+		for id, h in pairs(H.quests) do
+			if not rec.quests[id] then
+				local r = {}
+				for k, v in pairs(h) do r[k] = v end
+				if not r.z and r.zn then r.z = ZoneIdFor(r.zn) end
+				pcall(ApplyOne, id, r)
+			end
+		end
+	end
 	for id, r in pairs(rec.quests) do ApplyOne(id, r) end
 end
 
