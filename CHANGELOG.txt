@@ -1,5 +1,8 @@
 Pint's Quest Book - Changelog
 
+v1.7.9
+- Wailing Caverns is back in the Dungeons & Raids menu (1.7.8 left it out by mistake).
+
 v1.7.8
 - WoW Forever: Ruins of Lordaeron is in the Dungeons & Raids menu, and quests you recorded there before are filed under it.
 - WoW Forever: the City of Dalaran dungeon (levels 28-35) and its 13 quests are built in - the Alliance and Horde

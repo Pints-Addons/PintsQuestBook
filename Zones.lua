@@ -26,7 +26,8 @@ NS.ZONES = {
   -- Dungeons, raids and battlegrounds
   [2437] = { "Ragefire Chasm", 3, 13, 18, "dungeon" },
   [-15001] = { "Ruins of Lordaeron", 3, 15, 22, "dungeon" },      -- new in WoW Forever
-  [-15002] = { "City of Dalaran", 3, 28, 35, "dungeon" },         -- new in WoW Forever [718] = { "Wailing Caverns", 3, 17, 24, "dungeon" },
+  [718] = { "Wailing Caverns", 3, 17, 24, "dungeon" },
+  [-15002] = { "City of Dalaran", 3, 28, 35, "dungeon" },         -- new in WoW Forever
   [1581] = { "The Deadmines", 3, 17, 26, "dungeon" }, [209] = { "Shadowfang Keep", 3, 22, 30, "dungeon" },
   [719] = { "Blackfathom Deeps", 3, 24, 32, "dungeon" }, [717] = { "The Stockade", 3, 24, 32, "dungeon" },
   [721] = { "Gnomeregan", 3, 29, 38, "dungeon" }, [491] = { "Razorfen Kraul", 3, 29, 38, "dungeon" },
