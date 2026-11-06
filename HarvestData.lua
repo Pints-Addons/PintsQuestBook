@@ -1,4 +1,4 @@
--- Gathered in WoW Forever by Pint's Add-ons (ollie-2026-11-05, ollie-2026-11-06, macbook-2026-11-05) - quests, quest givers and where they stand.
+-- Gathered in WoW Forever by Pint's Add-ons (ollie-2026-11-05, ollie-2026-11-06, macbook-2026-11-05, Ruins of Lordaeron (published beta guides)) - quests, quest givers and where they stand.
 -- Applied at login like quests you recorded yourself; your own recordings come first.
 PintsQuestHarvest = { quests = {
 [8]={["f"]=1,["l"]=5,["t"]="A Rogue's Deal",["zn"]="Deathknell",["ch"]="4604:5,159:5",["e"]={"Innkeeper Renee",0,2267,243.6},["it"]="",["m"]=0,["xpLvl"]=7,["xpRaw"]=110,["xpTurnIn"]=true},
@@ -118,8 +118,16 @@ PintsQuestHarvest = { quests = {
 [6548]={["f"]=1,["l"]=18,["t"]="Avenge My Village",["z"]=406,["zn"]="Stonetalon Mountains"},
 [8368]={["f"]=1,["l"]=19,["t"]="Battle of Warsong Gulch",["z"]=3277,["zn"]="Warsong Gulch"},
 [86784]={["f"]=1,["l"]=7,["t"]="Sticks and Bones",["z"]=85,["zn"]="Tirisfal Glades"},
-[92401]={["f"]=1,["l"]=22,["t"]="A Frightened Request",["zn"]="Ruins of Lordaeron"},
-[92421]={["f"]=1,["l"]=22,["t"]="Light's Justice",["zn"]="Ruins of Lordaeron"},
+[92401]={["f"]=1,["l"]=22,["t"]="A Frightened Request",["zn"]="Ruins of Lordaeron",["ml"]=15,["ty"]=81,["s"]={"Tabitha Heartweaver"},["e"]={"Tabitha Heartweaver"},["ch"]="251485:1,251486:1"},
+[92415]={["t"]="Remember That I Love You",["l"]=22,["ml"]=15,["f"]=2,["zn"]="Ruins of Lordaeron",["ty"]=81,["s"]={"Last Scrawlings of Edward Heartweaver"},["e"]={"Orphan Matron Nightingale"}},
+[92421]={["f"]=1,["l"]=22,["t"]="Light's Justice",["zn"]="Ruins of Lordaeron",["ml"]=15,["ty"]=81,["s"]={"Morbin Lightbane"},["e"]={"Morbin Lightbane"},["ch"]="279874:1,279875:1"},
+[92422]={["t"]="The Wrath of Rath'mael",["l"]=22,["ml"]=15,["f"]=1,["zn"]="Ruins of Lordaeron",["ty"]=81,["s"]={"Deathguard Kristof"},["e"]={"Deathguard Kristof"},["ch"]="251533:1,251534:1"},
+[95161]={["t"]="Remember That I Love You",["l"]=22,["ml"]=15,["f"]=2,["zn"]="Ruins of Lordaeron",["p"]=92415,["s"]={"Orphan Matron Nightingale"},["e"]={"Avette Fellwood"},["it"]="279870:1"},
+[95189]={["t"]="Crest of Lordaeron",["l"]=22,["ml"]=16,["f"]=2,["zn"]="Ruins of Lordaeron",["ty"]=81,["s"]={"Crest of Lordaeron (item)"},["e"]={"Lady Dena Kennedy"},["it"]="280567:1"},
+[95195]={["t"]="Bloodied Insignia",["l"]=22,["ml"]=16,["f"]=2,["zn"]="Ruins of Lordaeron",["ty"]=81,["s"]={"Bloodied Insignia (item)"},["e"]={"General Marcus Jonathan"},["ch"]="279868:1,279869:1"},
+[95204]={["t"]="Crest of Lordaeron",["l"]=22,["ml"]=16,["f"]=1,["zn"]="Ruins of Lordaeron",["ty"]=81,["s"]={"Crest of Lordaeron (item)"},["e"]={"Oran Snakewrithe"},["it"]="280567:1"},
+[95216]={["t"]="The New Plague",["l"]=22,["ml"]=16,["f"]=1,["zn"]="Ruins of Lordaeron",["ty"]=81,["s"]={"Theodore Griffs"},["e"]={"Theodore Griffs"},["ch"]="279876:1,279877:1"},
+[95250]={["t"]="Abominable Creatures",["l"]=21,["ml"]=16,["f"]=2,["zn"]="Ruins of Lordaeron",["ty"]=81,["s"]={"Captain Truman"},["e"]={"Captain Truman"},["ch"]="279864:1,279865:1,279867:1"},
 [95314]={["f"]=1,["l"]=10,["t"]="That Shadowvale Green Elixir",["z"]=85,["zn"]="Tirisfal Glades"},
 [96604]={["ch"]="",["e"]={"Brakk",1,141.1,-4717.6},["f"]=1,["it"]="",["l"]=6,["m"]=0,["t"]="The Great Outdoors",["xpLvl"]=6,["xpRaw"]=410,["xpTurnIn"]=true,["zn"]="Camping"},
 [96607]={["ch"]="",["e"]={"Eleanor Shackleton",0,2167.6,447.3},["f"]=1,["it"]="",["l"]=6,["m"]=0,["t"]="The Great Outdoors",["xpLvl"]=6,["xpRaw"]=410,["xpTurnIn"]=true,["zn"]="Camping"},
@@ -141,6 +149,11 @@ PintsQuestHarvest = { quests = {
 [97279]={["ch"]="",["e"]={"Kzan Thornslash",1,-589,-4106.7},["f"]=1,["it"]="",["m"]=0,["t"]="Wayward Weapons",["xpLvl"]=3,["xpRaw"]=170,["xpTurnIn"]=true},
 [97281]={["ch"]="",["e"]={"Rezlak",1,999.9,-4418.2},["f"]=1,["it"]="",["l"]=11,["m"]=0,["t"]="A Simmering Storm",["xpLvl"]=10,["xpRaw"]=875,["xpTurnIn"]=true,["z"]=14,["zn"]="Durotar"},
 [97282]={["ch"]="281274:1,287060:1",["e"]={"Rezlak",1,996.2,-4416.7},["f"]=1,["it"]="",["l"]=10,["m"]=0,["t"]="Stormy Potential",["xpLvl"]=11,["xpRaw"]=850,["xpTurnIn"]=true,["z"]=14,["zn"]="Durotar"},
+[97288]={["t"]="Unending Torment",["l"]=21,["ml"]=16,["f"]=1,["zn"]="Ruins of Lordaeron",["ty"]=81,["s"]={"Abominable Head (item)"},["e"]={"Master Apothecary Faranell"}},
+[97289]={["t"]="Unending Torment",["l"]=21,["ml"]=16,["f"]=1,["zn"]="Ruins of Lordaeron",["p"]=97288,["s"]={"Master Apothecary Faranell"},["e"]={"Unfinished Abomination"}},
+[97290]={["t"]="Unending Torment",["l"]=21,["ml"]=16,["f"]=1,["zn"]="Ruins of Lordaeron",["p"]=97289,["s"]={"Unfinished Abomination"},["e"]={"Master Apothecary Faranell"},["ch"]="279867:1,279865:1,279864:1"},
+[97291]={["t"]="Unending Torment",["l"]=21,["ml"]=16,["f"]=1,["zn"]="Ruins of Lordaeron",["p"]=97290,["s"]={"Master Apothecary Faranell"},["e"]={"Master Apothecary Faranell"}},
+[97292]={["t"]="Unending Torment",["l"]=21,["ml"]=16,["f"]=1,["zn"]="Ruins of Lordaeron",["p"]=97291,["s"]={"Master Apothecary Faranell"},["e"]={"Master Apothecary Faranell"}},
 [97326]={["ch"]="281269:1,281270:1,281271:1,281272:1,281273:1",["e"]={"Thra",1,1999.8,-4217},["f"]=1,["it"]="",["l"]=15,["m"]=0,["t"]="Rocks to Rests",["xpLvl"]=13,["xpRaw"]=550,["xpTurnIn"]=true,["z"]=1637,["zn"]="Orgrimmar"},
 [97485]={["f"]=1,["l"]=10,["t"]="Traditions of the Bluff",["z"]=1638,["zn"]="Thunder Bluff"},
 [97891]={["ch"]="",["e"]={"Doctor Martin Felben",0,1400.2,425.2},["f"]=1,["it"]="",["l"]=16,["m"]=800,["ml"]=12,["o"]="Bring the Unstable Potion to Doctor Martin Felben in the Apothecarium within the time limit.",["s"]={"Alessandro Luca",0,1523.5,313.4},["t"]="Prompt Potion Runner",["xpLvl"]=12,["xpRaw"]=1150,["xpTurnIn"]=true,["z"]=1497,["zn"]="Undercity"},

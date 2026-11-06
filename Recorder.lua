@@ -122,7 +122,7 @@ local function ApplyOne(id, r)
 	q[1] = r.t
 	if r.l then q[2] = r.l end
 	-- the lowest level you were offered it at: the real requirement is at most that
-	if r.ml and (q[3] or 0) > r.ml then q[3] = r.ml end
+	if r.ml and (isNew or (q[3] or 0) > r.ml) then q[3] = r.ml end
 	if r.z and (isNew or q[4] == 0) then q[4] = r.z end
 	if isNew then
 		q[5] = (r.f == 3) and 0 or r.f or 0
@@ -143,6 +143,8 @@ local function ApplyOne(id, r)
 		if r.e[2] then q[21], q[22], q[23] = r.e[2], r.e[3], r.e[4] end
 	end
 	if r.o and r.o ~= "" then q[15] = r.o end
+	if r.p and (q[7] or 0) == 0 then q[7] = r.p end          -- the quest before it in a chain
+	if r.ty and (q[16] or 0) == 0 then q[16] = r.ty end      -- 81 = dungeon
 	if r.g and r.g > 1 then q[17] = r.g; if (q[16] or 0) == 0 then q[16] = 1 end end
 	q.checked = true
 	return isNew
