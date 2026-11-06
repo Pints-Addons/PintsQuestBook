@@ -1,5 +1,13 @@
 Pint's Quest Book - Changelog
 
+v1.7.6
+- Tells your group when you finish a quest objective, like Questie: "Quest Book: 1/1 Console Key for [Samophlange]!" in
+  party chat while you're in a group. On by default; /qb options to turn it off, or to also say every step (3/8, 4/8...).
+  (It stays quiet while Questie is running, so it isn't said twice.)
+- When every objective of a quest is done - solo or grouped - "Quest complete: <quest> - ready to turn in" shows across
+  the middle of the screen with a sound. Can be turned off in /qb options.
+- WoW Forever: a few more quests and quest givers built in.
+
 v1.7.5
 - WoW Forever: comes with quests seen in Forever - quests new to Forever, and where many quest givers stand - so the
   book knows them before you've met them. Your own recordings still come first.

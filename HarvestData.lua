@@ -1,4 +1,4 @@
--- Gathered in WoW Forever by Pint's Add-ons (ollie-2026-11-05, macbook-2026-11-05) - quests, quest givers and where they stand.
+-- Gathered in WoW Forever by Pint's Add-ons (ollie-2026-11-05, ollie-2026-11-06, macbook-2026-11-05) - quests, quest givers and where they stand.
 -- Applied at login like quests you recorded yourself; your own recordings come first.
 PintsQuestHarvest = { quests = {
 [8]={["f"]=1,["l"]=5,["t"]="A Rogue's Deal",["zn"]="Deathknell",["ch"]="4604:5,159:5",["e"]={"Innkeeper Renee",0,2267,243.6},["it"]="",["m"]=0,["xpLvl"]=7,["xpRaw"]=110,["xpTurnIn"]=true},
@@ -70,16 +70,20 @@ PintsQuestHarvest = { quests = {
 [894]={["f"]=1,["l"]=14,["t"]="Samophlange",["z"]=17,["zn"]="The Barrens"},
 [895]={["f"]=1,["l"]=16,["t"]="WANTED: Baron Longshore",["z"]=17,["zn"]="The Barrens"},
 [896]={["f"]=1,["l"]=18,["t"]="Miner's Fortune",["z"]=17,["zn"]="The Barrens"},
+[899]={["f"]=1,["l"]=20,["t"]="Consumed by Hatred",["z"]=17,["zn"]="The Barrens"},
 [924]={["ch"]="",["e"]={"Ak'Zeloth",1,253,-3696.5},["f"]=1,["it"]="5420:1",["l"]=14,["m"]=0,["t"]="The Demon Seed",["xpLvl"]=13,["xpRaw"]=1250,["xpTurnIn"]=true,["z"]=14,["zn"]="Durotar"},
 [926]={["ch"]="",["f"]=1,["it"]="4986:1",["m"]=0,["t"]="Flawed Power Stone"},
 [1061]={["f"]=1,["l"]=17,["t"]="The Spirits of Stonetalon",["z"]=406,["zn"]="Stonetalon Mountains"},
 [1062]={["f"]=1,["l"]=19,["t"]="Goblin Invaders",["z"]=406,["zn"]="Stonetalon Mountains"},
+[1464]={["ch"]="",["e"]={"Telf Joolam",1,-267.8,-4003.6},["f"]=1,["it"]="6636:1",["m"]=0,["t"]="Fire Sapta"},
 [1492]={["ch"]="",["e"]={"Wharfmaster Dizzywig",1,-982.4,-3793.7},["f"]=1,["it"]="",["l"]=11,["m"]=0,["t"]="Wharfmaster Dizzywig",["xpLvl"]=12,["xpRaw"]=440,["xpTurnIn"]=true,["z"]=17,["zn"]="The Barrens"},
 [1516]={["ch"]="",["e"]={"Canaga Earthcaller",1,-627.2,-4206.5},["f"]=1,["it"]="",["m"]=0,["t"]="Call of Earth",["xpLvl"]=5,["xpRaw"]=270,["xpTurnIn"]=true},
 [1517]={["ch"]="",["e"]={"Minor Manifestation of Earth",1,-876,-4294.3},["f"]=1,["it"]="",["l"]=4,["m"]=0,["t"]="Call of Earth",["xpLvl"]=6,["xpRaw"]=270,["xpTurnIn"]=true,["z"]=-82,["zn"]="Shaman"},
 [1518]={["ch"]="",["e"]={"Canaga Earthcaller",1,-627.8,-4207.4},["f"]=1,["it"]="5175:1",["l"]=4,["m"]=0,["t"]="Call of Earth",["xpLvl"]=6,["xpRaw"]=450,["xpTurnIn"]=true,["z"]=-82,["zn"]="Shaman"},
 [1524]={["ch"]="",["e"]={"Telf Joolam",1,-267.9,-4004.1},["f"]=1,["it"]="",["l"]=11,["m"]=0,["t"]="Call of Fire",["xpLvl"]=13,["xpRaw"]=650,["xpTurnIn"]=true,["z"]=-82,["zn"]="Shaman"},
-[1525]={["f"]=1,["l"]=12,["t"]="Call of Fire",["z"]=-82,["zn"]="Shaman"},
+[1525]={["f"]=1,["l"]=12,["t"]="Call of Fire",["z"]=-82,["zn"]="Shaman",["ch"]="",["e"]={"Telf Joolam",1,-267.9,-4004},["it"]="6636:1",["m"]=0,["xpLvl"]=16,["xpRaw"]=900,["xpTurnIn"]=true},
+[1526]={["ch"]="",["f"]=1,["it"]="6654:1",["l"]=13,["m"]=0,["t"]="Call of Fire",["xpLvl"]=16,["xpRaw"]=1150,["xpTurnIn"]=true,["z"]=-82,["zn"]="Shaman"},
+[1527]={["ch"]="",["e"]={"Kranal Fiss",1,262.3,-3045.4},["f"]=1,["it"]="5176:1,263412:1",["l"]=13,["m"]=0,["t"]="Call of Fire",["xpLvl"]=16,["xpRaw"]=1150,["xpTurnIn"]=true,["z"]=-82,["zn"]="Shaman"},
 [2161]={["ch"]="4540:5,159:5",["e"]={"Innkeeper Grosk",1,339.2,-4688.9},["f"]=1,["it"]="",["l"]=5,["m"]=0,["t"]="A Peon's Burden",["xpLvl"]=6,["xpRaw"]=110,["xpTurnIn"]=true,["z"]=14,["zn"]="Durotar"},
 [2983]={["ch"]="",["e"]={"Kranal Fiss",1,267.4,-3063.5},["f"]=1,["it"]="",["l"]=10,["m"]=0,["t"]="Call of Fire",["xpLvl"]=12,["xpRaw"]=420,["xpTurnIn"]=true,["z"]=-82,["zn"]="Shaman"},
 [3084]={["ch"]="",["e"]={"Shikrik",1,-620.4,-4204.9},["f"]=1,["it"]="",["m"]=0,["t"]="Rune-Inscribed Tablet",["xpLvl"]=3,["xpRaw"]=40,["xpTurnIn"]=true},
@@ -88,6 +92,7 @@ PintsQuestHarvest = { quests = {
 [3902]={["ch"]="11848:1,11849:1,11850:1",["e"]={"Deathguard Saltain",0,1864.6,1602.8},["f"]=1,["it"]="",["l"]=3,["m"]=0,["t"]="Scavenging Deathknell",["xpLvl"]=4,["xpRaw"]=320,["xpTurnIn"]=true,["zn"]="Deathknell"},
 [4402]={["ch"]="247840:1,247841:1,247846:1",["e"]={"Galgar",1,-564.8,-4224.8},["f"]=1,["it"]="11584:10",["m"]=50,["t"]="Galgar's Cactus Apple Surprise",["xpLvl"]=4,["xpRaw"]=380,["xpTurnIn"]=true},
 [4641]={["ch"]="",["e"]={"Gornek",1,-601.4,-4187.1},["f"]=1,["it"]="",["m"]=0,["t"]="Your Place in the World",["xpLvl"]=1,["xpRaw"]=40,["xpTurnIn"]=true},
+[4921]={["ch"]="",["f"]=1,["it"]="",["l"]=20,["m"]=900,["ml"]=16,["o"]="Find Mankrik's wife and then return to him in the Crossroads.",["s"]={"Mankrik",1,-517.4,-2643},["t"]="Lost in Battle",["xpLvl"]=16,["xpRaw"]=1150,["z"]=17,["zn"]="The Barrens"},
 [5041]={["f"]=1,["l"]=14,["t"]="Supplies for the Crossroads",["z"]=17,["zn"]="The Barrens"},
 [5441]={["ch"]="",["e"]={"Foreman Thazz'ril",1,-610.9,-4318.4},["f"]=1,["it"]="",["m"]=0,["t"]="Lazy Peons",["xpLvl"]=4,["xpRaw"]=450,["xpTurnIn"]=true},
 [5481]={["ch"]="",["e"]={"Junior Apothecary Holland",0,2389.9,405.1},["f"]=1,["it"]="",["l"]=5,["m"]=0,["t"]="Gordo's Task",["xpLvl"]=6,["xpRaw"]=230,["xpTurnIn"]=true,["z"]=85,["zn"]="Tirisfal Glades"},

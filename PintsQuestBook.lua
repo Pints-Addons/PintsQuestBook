@@ -2347,7 +2347,7 @@ ev:SetScript("OnEvent", function(self, event, arg1)
     db = PintsQuestBookDB
     db.minimap = db.minimap or {}
     local defaults = { tracker = true, hideBlizzTracker = true, autoAccept = true, autoTurnIn = true, autoLow = false,
-      autoRepeatable = false, skipEscort = true, showLow = false, trackerExpanded = {}, replaceLog = true, showCover = true }
+      autoRepeatable = false, skipEscort = true, announce = true, announceEvery = false, doneNotice = true, showLow = false, trackerExpanded = {}, replaceLog = true, showCover = true }
     for k, v in pairs(defaults) do if db[k] == nil then db[k] = v end end
   elseif event == "PLAYER_LEVEL_UP" then
     if win and win:IsShown() then C_Timer.After(1, Render) end
