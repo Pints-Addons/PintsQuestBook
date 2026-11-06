@@ -1,5 +1,20 @@
 Pint's Quest Book - Changelog
 
+v1.8
+- Quest arrow: left-click a quest in the tracker and the arrow points to the nearest place its unfinished objectives
+  can be done - or to whoever takes it in once it's complete - and moves on by itself as you finish objectives.
+  Click the quest again to stop. Alt-click now opens your quest log.
+- The arrow shows a time to arrive, worked out from how fast you're actually closing the distance (your speed and the
+  way you're heading), and moves with a middle-click drag. The arrow is a little larger, and the quest it's
+  pointing to has a clear arrow mark in the tracker.
+- Pint's Alts can show map coordinates for trainers and book sellers and point this arrow at them.
+- Minimap tooltip: quest objectives are indented under their quest, so only the quest names line up on the left.
+
+v1.7.10
+- The tracker's quest count (27/40) now counts every quest in your log, including ones in zones you've folded away.
+- Tracker text is brighter, with a crisper shadow and a slightly darker background, so it's easier to read while
+  running over bright ground.
+
 v1.7.9
 - Wailing Caverns is back in the Dungeons & Raids menu (1.7.8 left it out by mistake).
 

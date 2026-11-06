@@ -7,10 +7,108 @@ local offset = 0
 
 local function db() return NS.DB and NS.DB() end
 
+-- a crisp drop shadow (no outline: an outline smears the small letters) so the text reads over bright ground
+function NS.Outline(fs)
+  fs:SetShadowColor(0, 0, 0, 1); fs:SetShadowOffset(1, -1)
+end
+
+---------------------------------------------------------------- the quest arrow
+-- Left-click a quest in the tracker: the arrow points to the nearest place its unfinished objectives can be done, and to
+-- whoever takes it in once it's complete. It moves on by itself as you finish objectives. Click the quest again to stop.
+local function CharKey() return (GetRealmName() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
+local function LogIndex(qid)
+  for i = 1, (GetNumQuestLogEntries and GetNumQuestLogEntries() or 0) do
+    local title, _, _, isHeader, _, isComplete, _, id = GetQuestLogTitle(i)
+    if not isHeader and id == qid then return i, title, (isComplete == 1 or isComplete == true) end
+  end
+end
+-- where to go for a quest: cont, wx, wy, label, sub (or nil)
+local function QuestTarget(qid)
+  local index, title, complete = LogIndex(qid)
+  if not index then return end
+  local py, px, _, cont = UnitPosition("player")
+  local nb = GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(index) or 0
+  local allDone = complete
+  if not allDone and nb > 0 then
+    allDone = true
+    for j = 1, nb do local _, _, fin = GetQuestLogLeaderBoard(j, index); if not fin then allDone = false end end
+  end
+  local D = NS.Data and NS.Data()
+  local q = D and D.quests and D.quests[qid]
+  if not allDone then
+    local A = _G.PintsQuestAreas and _G.PintsQuestAreas[qid]
+    local best, bd
+    if A and py then
+      for _, o in ipairs(A) do
+        if not (NS.ObjectiveDone and NS.ObjectiveDone(index, o[1])) then
+          for k = 2, #o, 3 do
+            if o[k] == cont then
+              local n, w = o[k + 1] - py, o[k + 2] - px
+              local dd = n * n + w * w
+              if not bd or dd < bd then bd, best = dd, { o[k], o[k + 1], o[k + 2], o[1] } end
+            end
+          end
+          -- (no spot on this continent: remember one anyway)
+          if not best and o[2] then best = { o[2], o[3], o[4], o[1] } end
+        end
+      end
+    end
+    if best then return best[1], best[2], best[3], title, best[4] end
+  end
+  if q and q[21] and q[21] >= 0 and q[22] then
+    return q[21], q[22], q[23], title, (allDone and "Turn in: " or "Quest ender: ") .. ((D.names and D.names[q[14]]) or "?")
+  end
+end
+local questTicker
+function NS.StopQuestArrow(fromArrow)
+  NS.arrowQuest = nil
+  local d = db(); if d and d.questArrow then d.questArrow[CharKey()] = nil end
+  if questTicker then questTicker:Cancel(); questTicker = nil end
+  if not fromArrow and NS.ClearArrow then NS.ClearArrow() end
+  NS.RefreshTracker()
+end
+local function Follow()
+  local qid = NS.arrowQuest
+  if not qid then return end
+  if not LogIndex(qid) then NS.StopQuestArrow(); return end     -- turned in or abandoned
+  local c, x, y, title, sub = QuestTarget(qid)
+  if c then NS.ArrowRetarget(c, x, y, title, sub) end
+end
+function NS.QuestArrow(qid, quiet)
+  if not (NS.ArrowTo and NS.ArrowRetarget) then return end
+  local c, x, y, title, sub = QuestTarget(qid)
+  if not c then
+    if not quiet then print("|cffd4a24cQuest Book|r: no map location for " .. (select(2, LogIndex(qid)) or "that quest") .. " yet.") end
+    return
+  end
+  NS.arrowQuest = qid
+  local d = db(); if d then d.questArrow = d.questArrow or {}; d.questArrow[CharKey()] = qid end
+  NS.ArrowTo(c, x, y, title, sub, true, true)
+  if questTicker then questTicker:Cancel() end
+  questTicker = C_Timer.NewTicker(2, Follow)
+  NS.RefreshTracker()
+end
+do
+  local f = CreateFrame("Frame")
+  f:RegisterEvent("PLAYER_ENTERING_WORLD"); f:RegisterEvent("QUEST_LOG_UPDATE")
+  f:SetScript("OnEvent", function(self, e)
+    if e == "PLAYER_ENTERING_WORLD" then
+      -- pick the quest arrow back up after a /reload or login
+      C_Timer.After(3, function()
+        local d = db(); local qid = d and d.questArrow and d.questArrow[CharKey()]
+        if qid and not NS.arrowQuest and LogIndex(qid) then NS.QuestArrow(qid, true) end
+      end)
+    elseif NS.arrowQuest then
+      C_Timer.After(0.3, Follow)
+    end
+  end)
+end
+
 local function DiffColor(level)
   if GetQuestDifficultyColor then
     local c = GetQuestDifficultyColor(level)
-    if c then return c.r, c.g, c.b end
+    -- lifted a little toward white so grey and green quests stay readable over bright ground
+    if c then return c.r + (1 - c.r) * 0.35, c.g + (1 - c.g) * 0.35, c.b + (1 - c.b) * 0.35 end
   end
   return 1, 0.82, 0
 end
@@ -35,6 +133,7 @@ local function Line(i)
   b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall"); b.text:SetPoint("LEFT", 0, 0); b.text:SetPoint("RIGHT", 0, 0)
   b.text:SetJustifyH("LEFT"); b.text:SetWordWrap(false)
+  NS.Outline(b.text)
   b.tog = CreateFrame("Button", nil, b); b.tog:SetSize(13, 13); b.tog:SetPoint("LEFT", 0, 0)
   b.tog.tex = b.tog:CreateTexture(nil, "ARTWORK"); b.tog.tex:SetAllPoints()
   b.tog:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight", "ADD")
@@ -57,6 +156,8 @@ local function Line(i)
     end
     if button == "RightButton" then
       if PintsQuestBook and PintsQuestBook.OpenQuest then PintsQuestBook.OpenQuest(self.qid) end
+    elseif not IsAltKeyDown() and not self.future and self.logIndex then
+      if NS.arrowQuest == self.qid then NS.StopQuestArrow() else NS.QuestArrow(self.qid) end
     elseif self.logIndex and not InCombatLockdown() then
       if QuestLog_SetSelection then QuestLog_SetSelection(self.logIndex) elseif SelectQuestLogEntry then SelectQuestLogEntry(self.logIndex) end
       if QuestLogFrame then ShowUIPanel(QuestLogFrame); if QuestLog_Update then QuestLog_Update() end end
@@ -72,7 +173,10 @@ local function Line(i)
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine("Right-click: open in the Quest Book", 0.6, 0.8, 1)
     if not self.future and NS.HasAreas and NS.HasAreas(self.qid) then GameTooltip:AddLine("Ctrl-click: change its colour on the map", 0.6, 0.8, 1) end
-    if self.logIndex then GameTooltip:AddLine("Left-click: open your quest log", 0.6, 0.8, 1) end
+    if self.logIndex and not self.future then
+      GameTooltip:AddLine(NS.arrowQuest == self.qid and "Left-click: stop the arrow" or "Left-click: arrow to this quest", 0.6, 0.8, 1)
+      GameTooltip:AddLine("Alt-click: open your quest log", 0.6, 0.8, 1)
+    end
     GameTooltip:Show()
   end)
   b:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -83,7 +187,7 @@ end
 local function Build()
   T = CreateFrame("Frame", "PintsQuestTracker", UIParent, "BackdropTemplate")
   T:SetSize(WIDTH, 40); T:SetFrameStrata("LOW"); T:SetClampedToScreen(true)
-  T:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" }); T:SetBackdropColor(0, 0, 0, 0.25)
+  T:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" }); T:SetBackdropColor(0, 0, 0, 0.45)
   local d = db()
   T:SetWidth(d.trackerW or WIDTH)
   -- always pinned by its top-left corner, so the list grows downward
@@ -121,7 +225,7 @@ local function Build()
   T.grip:SetScript("OnLeave", function() GameTooltip:Hide() end)
   T:EnableMouseWheel(true)
   T:SetScript("OnMouseWheel", function(_, delta) offset = math.max(0, offset - delta * 3); NS.RefreshTracker() end)
-  T.title = T:CreateFontString(nil, "OVERLAY", "GameFontNormal"); T.title:SetPoint("TOPLEFT", 6, -5)
+  T.title = T:CreateFontString(nil, "OVERLAY", "GameFontNormal"); T.title:SetPoint("TOPLEFT", 6, -5); NS.Outline(T.title)
   T.min = CreateFrame("Button", nil, T); T.min:SetSize(16, 16); T.min:SetPoint("TOPRIGHT", -4, -3)
   T.min.tex = T.min:CreateTexture(nil, "ARTWORK"); T.min.tex:SetAllPoints()
   T.min:SetScript("OnClick", function() local dd = db(); dd.trackerMin = not dd.trackerMin; NS.RefreshTracker() end)
@@ -130,7 +234,7 @@ local function Build()
   T.book:SetScript("OnClick", function() if PintsQuestBook then PintsQuestBook.Toggle() end end)
   T.book:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:AddLine("Open the Quest Book"); GameTooltip:Show() end)
   T.book:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  T.more = T:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  T.more = T:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); NS.Outline(T.more)
 end
 
 -- hide or restore Blizzard's quest watch list
@@ -162,10 +266,14 @@ function NS.RefreshTracker()
   T:Show()
   local D = NS.Data and NS.Data()
   local rows = {}
-  local n = GetNumQuestLogEntries and GetNumQuestLogEntries() or 0
-  local count, zone = 0, nil
+  local n, numQuests = 0, nil
+  if GetNumQuestLogEntries then n, numQuests = GetNumQuestLogEntries() end
+  n = n or 0
+  -- every quest in the log counts toward the total, even in zones folded away here or in the game's quest log
+  local count, total, zone = 0, 0, nil
   for i = 1, n do
     local title, level, _, isHeader, _, isComplete, _, qid = GetQuestLogTitle(i)
+    if not isHeader and title then total = total + 1 end
     if isHeader then
       zone = title
       rows[#rows + 1] = { header = title }
@@ -177,13 +285,13 @@ function NS.RefreshTracker()
       local later = (D and qid and NS.Valid[qid] ~= nil) and Later(qid) or {}
       local sw = (qid and NS.HasAreas and NS.HasAreas(qid)) and NS.QuestSwatch(qid) or ""
       rows[#rows + 1] = { qid = qid, logIndex = i, title = title, chain = #later,
-        text = sw .. ("|cff%02x%02x%02x[%d] %s|r%s%s"):format(r * 255, g * 255, b * 255, level or 0, title,
+        text = (NS.arrowQuest == qid and "|TInterface\\Minimap\\MinimapArrow:18:18:0:0|t " or "") .. sw .. ("|cff%02x%02x%02x[%d] %s|r%s%s"):format(r * 255, g * 255, b * 255, level or 0, title,
           failed and "  |cffff2020(Failed)|r" or done and "  |cff40ff40(Complete)|r" or "", #later > 0 and ("  |cff8080a0+" .. #later .. "|r") or "") }
       local nb = GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(i) or 0
       if nb == 0 and done and not failed then rows[#rows + 1] = { obj = true, text = "|cff40ff40Ready to turn in|r", qid = qid, logIndex = i } end
       for j = 1, nb do
         local txt, _, finished = GetQuestLogLeaderBoard(j, i)
-        if txt then rows[#rows + 1] = { obj = true, text = (finished and "|cff40ff40" or "|cffd0d0d0") .. txt .. "|r", qid = qid, logIndex = i } end
+        if txt then rows[#rows + 1] = { obj = true, text = (finished and "|cff40ff40" or "|cffffffff") .. txt .. "|r", qid = qid, logIndex = i } end
       end
       if #later > 0 and d.trackerExpanded[qid] then
         for _, l in ipairs(later) do
@@ -191,13 +299,14 @@ function NS.RefreshTracker()
           local st = NS.Status(l[1])
           local mark = (st == "done") and "|cff40ff40done|r" or (st == "later") and ("|cffff8040lvl " .. (q[3] or 0) .. "|r") or ""
           rows[#rows + 1] = { qid = l[1], future = true,
-            text = ("%s|cff8a9ab8> [%d] %s|r  %s"):format(("   "):rep(l[2]), q[2] or 0, q[1], mark) }
+            text = ("%s|cffa8bce0> [%d] %s|r  %s"):format(("   "):rep(l[2]), q[2] or 0, q[1], mark) }
         end
       end
     end
   end
   -- drop zone headers that ended up with nothing under them (except collapsed ones, which stay clickable)
-  T.title:SetText(("Quests  |cffa0a0a0%d/%d|r"):format(count, MAX_QUESTLOG_QUESTS or 20))
+  if type(numQuests) == "number" and numQuests > total then total = numQuests end
+  T.title:SetText(("Quests  |cffd0d0d0%d/%d|r"):format(total, MAX_QUESTLOG_QUESTS or 20))
   T.min.tex:SetTexture(d.trackerMin and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
   for _, b in ipairs(btns) do b:Hide() end
   T.more:Hide()
@@ -219,7 +328,7 @@ function NS.RefreshTracker()
     if row.header then
       local col = d.trackerZones and d.trackerZones[row.header]
       b.text:SetPoint("LEFT", 0, 0); b.text:SetPoint("RIGHT", 0, 0)
-      b.text:SetText((col and "|cffa08040+ " or "|cffd4a24c") .. row.header .. "|r")
+      b.text:SetText((col and "|cffd0a060+ " or "|cffffc84a") .. row.header .. "|r")
       b.tog:Hide()
     elseif row.chain and row.chain > 0 then
       b.tog.qid = row.qid

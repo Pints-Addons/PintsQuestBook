@@ -211,3 +211,39 @@ f:SetScript("OnEvent", function()
     if WorldMapFrame and WorldMapFrame:IsShown() then NS.DrawMapAreas() end
   end)
 end)
+
+---------------------------------------------------------------- minimap tooltip: objectives indented under their quest
+-- The game's minimap tooltip lists each quest's name with its objectives below as "- 0/1 ..." lines, all flush left.
+-- Indent the objective lines so only the quest names line up on the left.
+do
+  local function OnMinimap(owner)
+    local p, n = owner, 0
+    while p and n < 4 do
+      if p == Minimap or p == MinimapCluster then return true end
+      p = p.GetParent and p:GetParent(); n = n + 1
+    end
+  end
+  local function Secret(v) return type(issecretvalue) == "function" and issecretvalue(v) end
+  local busy
+  local function Indent(tt)
+    if busy or not tt.GetOwner then return end
+    local owner = tt:GetOwner()
+    if not owner or not OnMinimap(owner) then return end
+    local name, changed = tt:GetName(), false
+    for i = 1, tt:NumLines() do
+      local fs = _G[name .. "TextLeft" .. i]
+      local t = fs and fs:GetText()
+      if type(t) == "string" and not Secret(t) and t:find("%- ") then
+        local s = "\n" .. t
+        s = s:gsub("\n(|c%x%x%x%x%x%x%x%x)%- ", "\n%1     - ")
+        s = s:gsub("\n%- ", "\n     - ")
+        s = s:sub(2)
+        if s ~= t then fs:SetText(s); changed = true end
+      end
+    end
+    if changed then busy = true; tt:Show(); busy = false end
+  end
+  GameTooltip:HookScript("OnShow", Indent)
+  hooksecurefunc(GameTooltip, "SetText", Indent)
+  hooksecurefunc(GameTooltip, "AddLine", Indent)
+end

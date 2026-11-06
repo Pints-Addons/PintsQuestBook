@@ -14,8 +14,8 @@ local ARRIVE = 6          -- yards
 
 local function BuildArrow()
 	arrow = CreateFrame("Button", "PintsQuestBookArrow", UIParent)
-	arrow:SetSize(64, 64); arrow:SetFrameStrata("HIGH"); arrow:SetClampedToScreen(true)
-	arrow:SetMovable(true); arrow:RegisterForDrag("LeftButton"); arrow:RegisterForClicks("RightButtonUp")
+	arrow:SetSize(80, 80); arrow:SetFrameStrata("HIGH"); arrow:SetClampedToScreen(true)
+	arrow:SetMovable(true); arrow:RegisterForDrag("LeftButton", "MiddleButton"); arrow:RegisterForClicks("RightButtonUp")
 	local d = db()
 	local p = d and d.arrowPos
 	if p then arrow:SetPoint(p[1], UIParent, p[2], p[3], p[4]) else arrow:SetPoint("TOP", UIParent, "TOP", 0, -140) end
@@ -31,19 +31,20 @@ local function BuildArrow()
 		GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
 		GameTooltip:AddLine(target.title or "Waypoint", 1, 0.82, 0)
 		if target.sub then GameTooltip:AddLine(target.sub, 0.8, 0.8, 0.8) end
-		GameTooltip:AddLine("Drag to move   Right-click: put the arrow away", 0.6, 0.6, 0.6)
+		GameTooltip:AddLine("Middle-click and drag to move   Right-click: put the arrow away", 0.6, 0.6, 0.6)
 		GameTooltip:Show()
 	end)
 	arrow:SetScript("OnLeave", function() GameTooltip:Hide() end)
 	-- a glow under the pointer so it reads against any background
-	local glow = arrow:CreateTexture(nil, "BACKGROUND"); glow:SetSize(70, 70); glow:SetPoint("CENTER")
+	local glow = arrow:CreateTexture(nil, "BACKGROUND"); glow:SetSize(88, 88); glow:SetPoint("CENTER")
 	glow:SetTexture("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask"); glow:SetVertexColor(0, 0, 0, 0.45)
-	arrow.pointer = arrow:CreateTexture(nil, "ARTWORK"); arrow.pointer:SetSize(52, 52); arrow.pointer:SetPoint("CENTER")
+	arrow.pointer = arrow:CreateTexture(nil, "ARTWORK"); arrow.pointer:SetSize(66, 66); arrow.pointer:SetPoint("CENTER")
 	arrow.pointer:SetTexture("Interface\\Minimap\\MinimapArrow")
-	arrow.check = arrow:CreateTexture(nil, "ARTWORK"); arrow.check:SetSize(36, 36); arrow.check:SetPoint("CENTER")
+	arrow.check = arrow:CreateTexture(nil, "ARTWORK"); arrow.check:SetSize(44, 44); arrow.check:SetPoint("CENTER")
 	arrow.check:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready"); arrow.check:Hide()
 	arrow.title = arrow:CreateFontString(nil, "OVERLAY", "GameFontNormal"); arrow.title:SetPoint("TOP", arrow, "BOTTOM", 0, 2)
 	arrow.dist = arrow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); arrow.dist:SetPoint("TOP", arrow.title, "BOTTOM", 0, -1)
+	arrow.eta = arrow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); arrow.eta:SetPoint("TOP", arrow.dist, "BOTTOM", 0, -1)
 	arrow.t = 0
 	arrow:SetScript("OnUpdate", function(self, el)
 		self.t = self.t + el
@@ -52,13 +53,34 @@ local function BuildArrow()
 		if not target then self:Hide(); return end
 		local py, px, _, cont = UnitPosition("player")   -- (north-south, east-west) in the same order as our data
 		if not py then
-			self.pointer:Hide(); self.check:Hide(); self.dist:SetText("|cff9d9d9dno position here (instance?)|r"); return
+			self.pointer:Hide(); self.check:Hide(); self.eta:SetText(""); self.dist:SetText("|cff9d9d9dno position here (instance?)|r"); return
 		end
 		if cont ~= target.cont then
-			self.pointer:Hide(); self.check:Hide(); self.dist:SetText("|cff9d9d9don another continent|r"); return
+			self.pointer:Hide(); self.check:Hide(); self.eta:SetText(""); self.dist:SetText("|cff9d9d9don another continent|r"); return
 		end
 		local north, west = target.wx - py, target.wy - px
 		local yards = math.sqrt(north * north + west * west)
+		-- time to get there: how fast the distance is actually shrinking (your speed and the way you're heading), smoothed
+		local now = GetTime()
+		if not self.lastY or self.lastTarget ~= target then
+			self.lastY, self.lastT, self.rate, self.lastTarget = yards, now, nil, target
+		elseif now - self.lastT >= 0.25 then
+			local closing = (self.lastY - yards) / (now - self.lastT)
+			self.rate = self.rate and (self.rate * 0.75 + closing * 0.25) or closing
+			self.lastY, self.lastT = yards, now
+		end
+		local moving = GetUnitSpeed and (GetUnitSpeed("player") or 0) > 0
+		if self.rate and self.rate > 0.5 and moving then
+			local secs = math.floor(yards / self.rate + 0.5)
+			self.eta:SetText(secs >= 3600 and ("|cffffd100%dh %02dm|r"):format(secs / 3600, (secs % 3600) / 60) or ("|cffffd100%d:%02d|r"):format(secs / 60, secs % 60))
+		elseif moving then self.eta:SetText("|cffff8040heading away|r")
+		else self.eta:SetText("|cff9d9d9d--:--|r") end
+		if target.quest and yards <= (target.near or 30) then
+			-- a quest area: you're in it; the arrow stays (it moves on by itself as objectives finish)
+			self.pointer:Hide(); self.check:Show(); self.eta:SetText("")
+			self.dist:SetText("|cff40ff40You're there|r")
+			return
+		end
 		if yards <= ARRIVE then
 			self.pointer:Hide(); self.check:Show()
 			self.dist:SetText("|cff40ff40You have arrived|r")
@@ -93,17 +115,28 @@ local function Saved(t)
 	if t == false then d.arrowTarget[CK()] = nil elseif t then d.arrowTarget[CK()] = t end
 	return d.arrowTarget[CK()]
 end
-function NS.ArrowTo(cont, wx, wy, title, sub, quiet)
+function NS.ArrowTo(cont, wx, wy, title, sub, quiet, fromQuest)
 	if not cont or not wx then return end
+	-- any other waypoint (the finder, a map pin...) takes over from a quest picked in the tracker
+	if not fromQuest and NS.arrowQuest and NS.StopQuestArrow then NS.StopQuestArrow(true) end
 	if not arrow then BuildArrow() end
-	target = { cont = cont, wx = wx, wy = wy, title = title, sub = sub }
+	target = { cont = cont, wx = wx, wy = wy, title = title, sub = sub, quest = NS.arrowQuest and true or nil }
 	Saved({ cont = cont, wx = wx, wy = wy, title = title, sub = sub })
 	arrow.title:SetText(title or "Waypoint")
 	arrow:Show()
 	if not quiet then Say(("arrow set for %s. Right-click the arrow (or /qb arrow) to put it away."):format(title or "your waypoint")) end
 end
+-- quest mode (a quest picked in the tracker) keeps its own target; the arrow only needs to follow it
+function NS.ArrowRetarget(cont, wx, wy, title, sub)
+	if target and target.quest and target.cont == cont and target.wx == wx and target.wy == wy then
+		target.title, target.sub = title, sub; arrow.title:SetText(title or "Waypoint"); return
+	end
+	NS.ArrowTo(cont, wx, wy, title, sub, true, true)
+end
+function NS.ArrowShown() return arrow and arrow:IsShown() and target ~= nil end
 function NS.ClearArrow()
 	target = nil
+	if NS.arrowQuest and NS.StopQuestArrow then NS.StopQuestArrow(true) end
 	Saved(false)
 	if arrow then arrow:Hide() end
 end

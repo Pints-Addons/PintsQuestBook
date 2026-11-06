@@ -318,6 +318,10 @@ local function Waypoint(mapID, x, y, title)
 end
 
 NS.Locate = function(...) return Locate(...) end
+-- for other Pint's add-ons (Pint's Alts points the arrow at trainers and book vendors)
+QB.Locate = function(...) return Locate(...) end
+QB.MapToWorld = function(...) return NS.MapToWorld(...) end
+QB.ArrowTo = function(...) if NS.ArrowTo then return NS.ArrowTo(...) end end
 NS.Waypoint = function(...) return Waypoint(...) end
 
 ---------------------------------------------------------------- quest status
