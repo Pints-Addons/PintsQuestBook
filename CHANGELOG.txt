@@ -1,5 +1,9 @@
 Pint's Quest Book - Changelog
 
+v1.8.2
+- Minimap: the quest-area shading leaves a gap around your arrow and your party's dots, so they're no longer hidden
+  under it.
+
 v1.8.1
 - Tracker: a finished quest folds its objectives away (a + after "(Complete)"); click "(Complete)" to show them again.
 - Quest level colours in the book and the tracker now come from the game itself (on WoW Forever: how hard each

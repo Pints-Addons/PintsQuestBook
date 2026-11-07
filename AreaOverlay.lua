@@ -116,6 +116,9 @@ end
 
 ---------------------------------------------------------------- minimap
 local mini, miniTex, mask = nil, {}, nil
+-- holes in the shading where you and your party are, so the game's arrow and party dots (drawn under add-ons) show through
+local HOLE = "Interface\\AddOns\\PintsQuestBook\\Hole"
+local holes = {}
 local spots, spotsAt = {}, nil
 local MINI_YARDS = {
   outdoor = { [0] = 466.67, 400, 333.33, 266.67, 200, 133.33 },
@@ -149,6 +152,7 @@ local function MiniTex(i)
   t = mini:CreateTexture(nil, "ARTWORK")
   t:SetTexture(DISC)
   if mask then t:AddMaskTexture(mask) end
+  for _, h in ipairs(holes) do t:AddMaskTexture(h) end
   miniTex[i] = t
   return t
 end
@@ -164,6 +168,12 @@ local function DrawMini()
       mask = mini:CreateMaskTexture()
       mask:SetTexture(DISC, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
       mask:SetAllPoints(Minimap)
+      for k = 1, 5 do
+        local h = mini:CreateMaskTexture()
+        h:SetTexture(HOLE, "CLAMPTOWHITE", "CLAMPTOWHITE")
+        h:SetSize(1, 1); h:SetPoint("CENTER", UIParent, "BOTTOMLEFT", -500, -500)
+        holes[k] = h
+      end
     end
   end
   local n = 0
@@ -181,6 +191,22 @@ local function DrawMini()
     local cs, sn = rot and math.cos(rot) or 1, rot and math.sin(rot) or 0
     local size = R_YARDS / radius * half * 2
     local alpha = MINI_ALPHA * (d.map.miniAlpha or 1)
+    -- you: always the middle of the minimap; party members: where they are (when the game says)
+    if holes[1] then
+      holes[1]:ClearAllPoints(); holes[1]:SetSize(24, 24); holes[1]:SetPoint("CENTER", Minimap, "CENTER", 0, 0)
+      for k = 1, 4 do
+        local h = holes[k + 1]
+        local qy, qx = UnitPosition("party" .. k)
+        h:ClearAllPoints()
+        if qy and qx and not (issecretvalue and (issecretvalue(qy) or issecretvalue(qx))) and UnitExists("party" .. k) then
+          local x, y = -(qx - py), qy - px
+          if rot then x, y = x * cs + y * sn, -x * sn + y * cs end
+          h:SetSize(16, 16); h:SetPoint("CENTER", Minimap, "CENTER", x / radius * half, y / radius * half)
+        else
+          h:SetSize(1, 1); h:SetPoint("CENTER", UIParent, "BOTTOMLEFT", -500, -500)
+        end
+      end
+    end
     for _, s in ipairs(spots) do
       local north, west = s[1] - px, s[2] - py
       if math.abs(north) < radius + R_YARDS and math.abs(west) < radius + R_YARDS then
