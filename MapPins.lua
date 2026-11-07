@@ -438,6 +438,79 @@ local function MapButton()
   b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:AddLine("Quest Book"); GameTooltip:AddLine("Choose which icons show on the map", 1, 1, 1); GameTooltip:Show() end)
   b:SetScript("OnLeave", function() GameTooltip:Hide() end)
   WorldMapFrame.PintsStorybookButton = b
+  -- a drop-down beside it: tick the kinds of icons to show (stays open while you tick; click outside to close)
+  local dd = CreateFrame("Button", nil, WorldMapFrame, "UIPanelButtonTemplate")
+  dd:SetSize(96, 22); dd:SetPoint("RIGHT", b, "LEFT", -8, 0); dd:SetText("Map icons  v")
+  dd:SetFrameStrata("HIGH"); dd:SetFrameLevel(b:GetFrameLevel())
+  dd:SetScript("OnClick", function(self) NS.ToggleIconMenu(self) end)
+  WorldMapFrame.PintsStorybookDropdown = dd
+end
+
+-- the map-icon drop-down: every kind of icon with a tick box, in three columns
+local iconMenu
+function NS.ToggleIconMenu(anchor)
+  local d = db(); if not d then return end
+  NS.MapDefaults(d)
+  local m = d.map
+  if iconMenu then iconMenu:SetShown(not iconMenu:IsShown()); if iconMenu:IsShown() then iconMenu:Refresh() end; return end
+  iconMenu = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+  local f = iconMenu
+  f:SetFrameStrata("FULLSCREEN_DIALOG"); f:EnableMouse(true); f:SetClampedToScreen(true)
+  f:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = true, tileSize = 16, edgeSize = 14, insets = { left = 4, right = 4, top = 4, bottom = 4 } })
+  f:SetBackdropColor(0.05, 0.05, 0.05, 0.96)
+  f.rows = {}
+  local COLW, ROWH = 168, 18
+  local cols = { {}, {}, {} }
+  local function head(col, text) cols[col][#cols[col] + 1] = { head = text } end
+  local function item(col, label, icon, get, set) cols[col][#cols[col] + 1] = { label = label, icon = icon, get = get, set = set } end
+  head(1, "Quests")
+  item(1, "Quests to pick up", ICON.qavail, function() return m.qavail end, function(v) m.qavail = v end)
+  item(1, "Quests to turn in", ICON.qturn, function() return m.qturn end, function(v) m.qturn = v end)
+  item(1, "Low-level quests", ICON.qavail, function() return m.qlow end, function(v) m.qlow = v end)
+  item(1, "On continent maps", ICON.qturn, function() return m.qcontinent ~= false end, function(v) m.qcontinent = v end)
+  item(1, "Objective areas", nil, function() return m.qareas end, function(v) m.qareas = v end)
+  item(1, "Rare mobs", nil, function() return m.rares end, function(v) m.rares = v end)
+  head(1, "Townsfolk")
+  for _, k in ipairs(NS.MAP_TOWN) do item(1, LABEL[k], ICON[k], function() return m[k] end, function(v) m[k] = v end) end
+  head(2, "Vendors")
+  for _, k in ipairs(NS.MAP_VEND) do item(2, LABEL[k], ICON[k], function() return m[k] end, function(v) m[k] = v end) end
+  head(2, "Other")
+  item(2, "Minimap icons too", nil, function() return m.minimap end, function(v) m.minimap = v; if NS.RefreshMinimap then NS.RefreshMinimap(true) end end)
+  item(2, "All Quest Book icons", nil, function() return m.enabled end, function(v) m.enabled = v end)
+  head(3, "Profession trainers")
+  item(3, "Only my professions", nil, function() return m.knownProfs end, function(v) m.knownProfs = v end)
+  for _, p in ipairs(NS.MAP_PROF) do item(3, p, ICON["p:" .. p], function() return m.prof[p] end, function(v) m.prof[p] = v end) end
+  local tallest = 0
+  for c, list in ipairs(cols) do
+    for i, e in ipairs(list) do
+      local x, y = 8 + (c - 1) * COLW, -8 - (i - 1) * ROWH
+      if e.head then
+        local h = f:CreateFontString(nil, "OVERLAY", "GameFontNormal"); h:SetPoint("TOPLEFT", x + 2, y - 2); h:SetText(e.head)
+      else
+        local r = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate"); r:SetSize(18, 18); r:SetPoint("TOPLEFT", x, y)
+        local tx = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); tx:SetText(e.label)
+        if e.icon then
+          local ic = r:CreateTexture(nil, "ARTWORK"); ic:SetSize(14, 14); ic:SetPoint("LEFT", r, "RIGHT", 1, 0); ic:SetTexture(e.icon)
+          tx:SetPoint("LEFT", ic, "RIGHT", 3, 0)
+        else tx:SetPoint("LEFT", r, "RIGHT", 2, 0) end
+        r.e = e
+        r:SetScript("OnClick", function(self) self.e.set(self:GetChecked() and true or false); NS.RefreshMap() end)
+        f.rows[#f.rows + 1] = r
+      end
+    end
+    tallest = math.max(tallest, #list)
+  end
+  f:SetSize(16 + 3 * COLW, 16 + tallest * ROWH)
+  function f:Refresh() for _, r in ipairs(self.rows) do r:SetChecked(r.e.get() and true or false) end end
+  f:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, -4)
+  -- a click anywhere else closes it
+  f:SetScript("OnShow", function(self) pcall(self.RegisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
+  f:SetScript("OnHide", function(self) pcall(self.UnregisterEvent, self, "GLOBAL_MOUSE_DOWN") end)
+  f:SetScript("OnEvent", function(self) if not self:IsMouseOver() and not anchor:IsMouseOver() then self:Hide() end end)
+  WorldMapFrame:HookScript("OnHide", function() f:Hide() end)
+  f:Refresh(); f:Show()
+  pcall(f.RegisterEvent, f, "GLOBAL_MOUSE_DOWN")
 end
 
 local ev = CreateFrame("Frame")

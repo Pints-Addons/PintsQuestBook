@@ -1,5 +1,9 @@
 Pint's Quest Book - Changelog
 
+v1.8.6
+- World map: a "Map icons" drop-down beside the book button - tick or untick quests, townsfolk, vendors,
+  profession trainers, rares and more straight from the map.
+
 v1.8.5
 - World map: the ! and ? of every zone now show on the continent maps (Kalimdor, Eastern Kingdoms) too, with
   nearby givers sharing an icon. Option: "Quests on continent maps"; "Low-level quests" hides the grey ones.
