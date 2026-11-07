@@ -27,6 +27,7 @@ local function QuestTarget(qid)
   local index, title, complete = LogIndex(qid)
   if not index then return end
   local py, px, _, cont = UnitPosition("player")
+  if issecretvalue and (issecretvalue(py) or issecretvalue(px)) then py, px = nil, nil end   -- (WoW Forever can hide your position)
   local nb = GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(index) or 0
   local allDone = complete
   if not allDone and nb > 0 then
@@ -104,7 +105,11 @@ do
   end)
 end
 
-local function DiffColor(level)
+local function DiffColor(level, qid)
+  -- the same answer as the game's quest log: how hard this quest is for you (WoW Forever), else by its level
+  local band = NS.QuestBand and NS.QuestBand(qid, level)
+  local c0 = band and QuestDifficultyColors and QuestDifficultyColors[band]
+  if c0 then return c0.r + (1 - c0.r) * 0.35, c0.g + (1 - c0.g) * 0.35, c0.b + (1 - c0.b) * 0.35 end
   if GetQuestDifficultyColor then
     local c = GetQuestDifficultyColor(level)
     -- lifted a little toward white so grey and green quests stay readable over bright ground
@@ -142,6 +147,24 @@ local function Line(i)
     d.trackerExpanded[self.qid] = not d.trackerExpanded[self.qid] or nil
     NS.RefreshTracker()
   end)
+  -- "(Complete)" opens or folds a finished quest's objectives
+  b.measure = b:CreateFontString(nil, "BACKGROUND", "GameFontNormalSmall"); b.measure:Hide()
+  b.doneBtn = CreateFrame("Button", nil, b); b.doneBtn:SetHeight(LINE_H); b.doneBtn:Hide()
+  b.doneBtn:SetFrameLevel(b:GetFrameLevel() + 2)
+  b.doneBtn:SetHighlightTexture("Interface\\Buttons\\UI-Listbox-Highlight2", "ADD")
+  b.doneBtn:SetScript("OnClick", function(self)
+    local d = db(); if not d or not self.qid then return end
+    d.trackerDoneOpen = d.trackerDoneOpen or {}
+    d.trackerDoneOpen[self.qid] = not d.trackerDoneOpen[self.qid] or nil
+    NS.RefreshTracker()
+  end)
+  b.doneBtn:SetScript("OnEnter", function(self)
+    local d = db()
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+    GameTooltip:AddLine(d and d.trackerDoneOpen and d.trackerDoneOpen[self.qid] and "Click: fold the objectives away" or "Click: show the objectives", 0.6, 0.8, 1)
+    GameTooltip:Show()
+  end)
+  b.doneBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
   b:SetScript("OnClick", function(self, button)
     if self.header then
       local d = db(); d.trackerZones = d.trackerZones or {}
@@ -279,15 +302,21 @@ function NS.RefreshTracker()
       rows[#rows + 1] = { header = title }
     elseif title and not (d.trackerZones and zone and d.trackerZones[zone]) then
       count = count + 1
-      local r, g, b = DiffColor(level)
+      local r, g, b = DiffColor(level, qid)
       local done = (isComplete == 1 or isComplete == true)
       local failed = (isComplete == -1)
       local later = (D and qid and NS.Valid[qid] ~= nil) and Later(qid) or {}
       local sw = (qid and NS.HasAreas and NS.HasAreas(qid)) and NS.QuestSwatch(qid) or ""
-      rows[#rows + 1] = { qid = qid, logIndex = i, title = title, chain = #later,
-        text = (NS.arrowQuest == qid and "|TInterface\\Minimap\\MinimapArrow:18:18:0:0|t " or "") .. sw .. ("|cff%02x%02x%02x[%d] %s|r%s%s"):format(r * 255, g * 255, b * 255, level or 0, title,
-          failed and "  |cffff2020(Failed)|r" or done and "  |cff40ff40(Complete)|r" or "", #later > 0 and ("  |cff8080a0+" .. #later .. "|r") or "") }
+      -- a finished quest folds its objectives away; clicking "(Complete)" opens them again
+      d.trackerDoneOpen = d.trackerDoneOpen or {}
+      local folded = done and not failed and qid and not d.trackerDoneOpen[qid]
+      local head = (NS.arrowQuest == qid and "|TInterface\\Minimap\\MinimapArrow:18:18:0:0|t " or "") .. sw .. ("|cff%02x%02x%02x[%d] %s|r"):format(r * 255, g * 255, b * 255, level or 0, title)
+      local doneTag = (done and not failed) and ("  |cff40ff40(Complete)|r" .. (folded and " |cff40ff40+|r" or "")) or ""
+      rows[#rows + 1] = { qid = qid, logIndex = i, title = title, chain = #later, head = (done and not failed) and head or nil,
+        doneTag = (done and not failed) and doneTag or nil,
+        text = head .. (failed and "  |cffff2020(Failed)|r" or doneTag) .. (#later > 0 and ("  |cff8080a0+" .. #later .. "|r") or "") }
       local nb = GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(i) or 0
+      if folded then nb = -1 end
       if nb == 0 and done and not failed then rows[#rows + 1] = { obj = true, text = "|cff40ff40Ready to turn in|r", qid = qid, logIndex = i } end
       for j = 1, nb do
         local txt, _, finished = GetQuestLogLeaderBoard(j, i)
@@ -340,6 +369,22 @@ function NS.RefreshTracker()
       b.tog:Hide()
       b.text:SetPoint("LEFT", row.obj and 28 or 16, 0); b.text:SetPoint("RIGHT", 0, 0)
       b.text:SetText(row.text)
+    end
+    b.doneBtn:Hide()
+    if row.doneTag and row.head then
+      -- where "(Complete)" sits: measure the title before it in the same font
+      local font, size, flags = b.text:GetFont()
+      if font then b.measure:SetFont(font, size, flags) end
+      b.measure:SetText(row.head); local x0 = b.measure:GetStringWidth()
+      b.measure:SetText(row.doneTag); local w = b.measure:GetStringWidth()
+      local left = (row.chain and row.chain > 0) and 16 or 16
+      local room = (b:GetWidth() or 0) - left
+      if room > 0 and x0 < room then
+        b.doneBtn.qid = row.qid
+        b.doneBtn:ClearAllPoints(); b.doneBtn:SetPoint("LEFT", b, "LEFT", left + x0, 0)
+        b.doneBtn:SetWidth(math.max(20, math.min(w, room - x0)))
+        b.doneBtn:Show()
+      end
     end
     b:Show()
     y = y - LINE_H

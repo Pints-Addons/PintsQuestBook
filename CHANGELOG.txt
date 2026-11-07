@@ -1,5 +1,14 @@
 Pint's Quest Book - Changelog
 
+v1.8.1
+- Tracker: a finished quest folds its objectives away (a + after "(Complete)"); click "(Complete)" to show them again.
+- Quest level colours in the book and the tracker now come from the game itself (on WoW Forever: how hard each
+  quest is for you, the same check the game's quest log uses), so they match the quest log (on WoW Forever a
+  level 17 quest at level 23 is green, not grey). Grey quests hidden by "show low-level quests" follow the same rule.
+- WoW Forever: fixed "attempt to compare a secret number value" from the quest arrow. The game can hide your speed,
+  position or facing from add-ons (in combat and some places); the arrow now waits ("position hidden right now")
+  instead of erroring, and the time-to-arrive goes by how fast the distance is closing when speed is hidden.
+
 v1.8
 - Quest arrow: left-click a quest in the tracker and the arrow points to the nearest place its unfinished objectives
   can be done - or to whoever takes it in once it's complete - and moves on by itself as you finish objectives.

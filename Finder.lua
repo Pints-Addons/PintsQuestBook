@@ -52,6 +52,11 @@ local function BuildArrow()
 		self.t = 0
 		if not target then self:Hide(); return end
 		local py, px, _, cont = UnitPosition("player")   -- (north-south, east-west) in the same order as our data
+		-- WoW Forever can hide your position, speed or facing from add-ons (in combat, some areas): then just wait
+		local S = issecretvalue
+		if S and (S(py) or S(px) or S(cont)) then
+			self.pointer:Hide(); self.check:Hide(); self.eta:SetText(""); self.dist:SetText("|cff9d9d9dposition hidden right now|r"); return
+		end
 		if not py then
 			self.pointer:Hide(); self.check:Hide(); self.eta:SetText(""); self.dist:SetText("|cff9d9d9dno position here (instance?)|r"); return
 		end
@@ -69,7 +74,10 @@ local function BuildArrow()
 			self.rate = self.rate and (self.rate * 0.75 + closing * 0.25) or closing
 			self.lastY, self.lastT = yards, now
 		end
-		local moving = GetUnitSpeed and (GetUnitSpeed("player") or 0) > 0
+		local speed = GetUnitSpeed and GetUnitSpeed("player")
+		local moving
+		if S and S(speed) then moving = self.rate ~= nil      -- (speed hidden: go by whether the distance is changing)
+		else moving = (speed or 0) > 0 end
 		if self.rate and self.rate > 0.5 and moving then
 			local secs = math.floor(yards / self.rate + 0.5)
 			self.eta:SetText(secs >= 3600 and ("|cffffd100%dh %02dm|r"):format(secs / 3600, (secs % 3600) / 60) or ("|cffffd100%d:%02d|r"):format(secs / 60, secs % 60))
@@ -95,6 +103,7 @@ local function BuildArrow()
 		-- angle to the target measured like the game's facing: 0 = north, turning counter-clockwise (west is +90 degrees)
 		local bearing = math.atan2(west, north)
 		local facing = GetPlayerFacing and GetPlayerFacing() or 0
+		if S and S(facing) then self.pointer:Hide(); self.check:Hide(); return end
 		local rel = bearing - facing
 		self.pointer:Show(); self.check:Hide()
 		self.pointer:SetRotation(rel)
@@ -174,6 +183,7 @@ local TYPES = {
 local function Search(cat, text)
 	local T = _G.PintsTownData
 	local py, px, _, cont = UnitPosition("player")
+	if issecretvalue and (issecretvalue(py) or issecretvalue(px)) then py, px = nil, nil end   -- (WoW Forever can hide your position)
 	if not (T and py) then return {}, cont end
 	local fac = (UnitFactionGroup("player") == "Horde") and 1 or 2
 	local myClass = CLASS_ID[select(2, UnitClass("player")) or ""]

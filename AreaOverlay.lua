@@ -168,6 +168,7 @@ local function DrawMini()
   end
   local n = 0
   local px, py, _, cont = UnitPosition("player")
+  if issecretvalue and (issecretvalue(px) or issecretvalue(py)) then px, py = nil, nil end   -- (WoW Forever can hide your position)
   local d = db()
   if px and On() and d.map.minimap then
     if not spotsAt or spotsAt ~= cont then Collect(cont); spotsAt = cont end
@@ -176,6 +177,7 @@ local function DrawMini()
     local radius = (MINI_YARDS[indoor][zoom] or 266) / 2
     local half = Minimap:GetWidth() / 2
     local rot = GetCVar("rotateMinimap") == "1" and GetPlayerFacing and (GetPlayerFacing() or 0) or nil
+    if rot and issecretvalue and issecretvalue(rot) then rot = nil end
     local cs, sn = rot and math.cos(rot) or 1, rot and math.sin(rot) or 0
     local size = R_YARDS / radius * half * 2
     local alpha = MINI_ALPHA * (d.map.miniAlpha or 1)

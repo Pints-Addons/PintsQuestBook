@@ -85,22 +85,41 @@ local function Name(i) return (i and i > 0 and D.names[i]) or nil end
 local function Hex(c) return ("|cff%02x%02x%02x"):format(c[1] * 255, c[2] * 255, c[3] * 255) end
 
 -- quest level colours, darkened so they read on parchment
-local function IsTrivial(level)
-  if not level or level <= 0 then return false end
+-- which band the game itself puts a quest level in (so the book matches the quest log on every client):
+-- "impossible" (red), "verydifficult" (orange), "difficult" (yellow), "standard" (green), "trivial" (grey)
+local function Band(level)
   local me = UnitLevel("player")
-  local gray = (GetQuestGreenRange and GetQuestGreenRange()) or (me <= 5 and 5) or (me <= 39 and (me / 10 + 5)) or (me / 5 + 1)
-  return (me - level) > gray
-end
-local function LevelColor(level)
-  local me = UnitLevel("player")
+  if GetQuestDifficultyColor and QuestDifficultyColors then
+    local c = GetQuestDifficultyColor(level or me)
+    for _, k in ipairs({ "impossible", "verydifficult", "difficult", "standard", "trivial", "header" }) do
+      local q = QuestDifficultyColors[k]
+      if q and c and (c == q or (c.r == q.r and c.g == q.g and c.b == q.b)) then return k == "header" and "trivial" or k end
+    end
+  end
+  -- (no game function: the classic rule)
   local d = (level or me) - me
-  if d >= 5 then return { 0.75, 0.05, 0.05 } end
-  if d >= 3 then return { 0.80, 0.35, 0.00 } end
-  if d >= -2 then return { 0.55, 0.45, 0.00 } end
+  if d >= 5 then return "impossible" elseif d >= 3 then return "verydifficult" elseif d >= -2 then return "difficult" end
   local gray = (GetQuestGreenRange and GetQuestGreenRange()) or (me <= 5 and 5) or (me <= 39 and (me / 10 + 5)) or (me / 5 + 1)
-  if -d <= gray then return { 0.05, 0.45, 0.05 } end
-  return { 0.45, 0.43, 0.40 }
+  return (-d <= gray) and "standard" or "trivial"
 end
+-- WoW Forever's quest log asks the game how hard each quest is for you (not just its level): use that when we can
+local REL = { [0] = "trivial", [1] = "standard", [2] = "difficult", [3] = "verydifficult", [4] = "impossible" }
+local function QuestBand(qid, level)
+  local f = qid and C_PlayerInfo and C_PlayerInfo.GetContentDifficultyQuestForPlayer
+  if f then
+    local ok, v = pcall(f, qid)
+    if ok and type(v) == "number" and not (issecretvalue and issecretvalue(v)) and REL[v] then return REL[v] end
+  end
+  return Band(level)
+end
+NS.QuestBand = QuestBand
+local function IsTrivial(level, qid)
+  if not level or level <= 0 then return false end
+  return QuestBand(qid, level) == "trivial"
+end
+local BAND_COLOR = { impossible = { 0.75, 0.05, 0.05 }, verydifficult = { 0.80, 0.35, 0.00 }, difficult = { 0.55, 0.45, 0.00 },
+  standard = { 0.05, 0.45, 0.05 }, trivial = { 0.45, 0.43, 0.40 } }
+local function LevelColor(level, qid) return BAND_COLOR[QuestBand(qid, level)] or BAND_COLOR.difficult end
 
 -- XP for a quest at a given player level (CMaNGOS Classic formula, rounded the way the game shows it)
 local function RoundXP(x)
@@ -284,6 +303,7 @@ NS.WarmLocate = WarmLocate
 -- /qb mapcheck: compare where the Storybook would place you with where the game says you are
 function NS.MapCheck()
   local p1, p2, _, inst = UnitPosition("player")
+  if issecretvalue and (issecretvalue(p1) or issecretvalue(p2)) then p1, p2 = nil, nil end   -- (WoW Forever can hide your position)
   local best = C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
   local real = best and C_Map.GetPlayerMapPosition(best, "player")
   if not (p1 and real) or not CONTINENT[inst] then print("|cffd4a24cQuest Book|r: stand outdoors (not in a dungeon) and try again."); return end
@@ -495,7 +515,7 @@ local function ZoneRows(zone)
     local size = ChainSize(r)
     local function walk(id, depth)
       local q = D.quests[id]
-      local hide = (db.hideDone and IsDone(id)) or (not db.showLow and not IsDone(id) and IsTrivial(q[2]) and not inLog[id])
+      local hide = (db.hideDone and IsDone(id)) or (not db.showLow and not IsDone(id) and IsTrivial(q[2], id) and not inLog[id])
       if not hide then rows[#rows + 1] = { id = id, depth = depth, inZone = ZoneOf(q) == zone, chain = ci, size = size } end
       for _, c in ipairs(children[id] or {}) do walk(c, depth + 1) end
     end
@@ -869,7 +889,7 @@ local function RenderLog()
       y = y + 26
     else
       PlaceRow(r, y, 10)
-      r.lvl:SetText(Hex(LevelColor(rw.level)) .. "[" .. (rw.level or "?") .. "]|r")
+      r.lvl:SetText(Hex(LevelColor(rw.level, rw.qid)) .. "[" .. (rw.level or "?") .. "]|r")
       local col = rw.ready and { 0.08, 0.42, 0.08 } or BLUE_INK
       r.title:SetText(Hex(col) .. rw.title .. (rw.failed and "  |cff9a2020(Failed)|r" or "") .. "|r")
       r.icon:SetTexture(rw.ready and STATUS_ICON.ready or STATUS_ICON.log); r.icon:Show()
@@ -1158,7 +1178,7 @@ function Render()
       r.line:ClearAllPoints(); r.line:SetPoint("TOPLEFT", indent - 8, 0); r.line:SetPoint("BOTTOMLEFT", indent - 8, 10); r.line:Show()
       r.tick:ClearAllPoints(); r.tick:SetPoint("LEFT", indent - 8, 0); r.tick:Show()
     else r.line:Hide(); r.tick:Hide() end
-    r.lvl:SetText(Hex(LevelColor(q[2])) .. "[" .. (q[2] > 0 and q[2] or "?") .. "]|r")
+    r.lvl:SetText(Hex(LevelColor(q[2], rw.id)) .. "[" .. (q[2] > 0 and q[2] or "?") .. "]|r")
     local st = Status(rw.id)
     -- accepted quests are written in blue ink (green when ready to hand in) with a matching mark at the edge
     local col = (st == "log") and BLUE_INK or (st == "ready") and { 0.08, 0.42, 0.08 }
@@ -1331,7 +1351,7 @@ function ShowDetail(id)
     if desc and desc ~= "" then heading("The Tale", 8); text(desc, F_BODY, INK_SOFT) end
   end
   if not q then
-    text(Hex(LevelColor(logLevel)) .. "Level " .. (logLevel or "?") .. "|r   -   in your quest log", F_BODY, INK_SOFT)
+    text(Hex(LevelColor(logLevel, id)) .. "Level " .. (logLevel or "?") .. "|r   -   in your quest log", F_BODY, INK_SOFT)
     logSections()
     c:SetHeight(y + 10)
     detail.scroll:SetVerticalScroll(0); detail.scroll.Update()
@@ -1340,7 +1360,7 @@ function ShowDetail(id)
   local lv = q[2] > 0 and ("Level " .. q[2]) or "Scales to your level"
   local need = (q[3] or 0) > 0 and ("   -   requires level " .. q[3]) or ""
   local grp = (q[16] == 81 and "   -   Dungeon") or (q[16] == 62 and "   -   Raid") or (q[16] == 41 and "   -   PvP") or (q[16] == 1 and "   -   Group" .. ((q[17] or 0) > 0 and (" of " .. q[17]) or "")) or ""
-  text(Hex(LevelColor(q[2])) .. lv .. "|r" .. need .. grp, F_BODY, INK_SOFT)
+  text(Hex(LevelColor(q[2], id)) .. lv .. "|r" .. need .. grp, F_BODY, INK_SOFT)
   local st = Status(id)
   text(STATUS_TEXT[st]:format(q[3] or 0), F_SMALL, st == "done" and { 0.05, 0.45, 0.05 } or INK_SOFT)
   local zone = ZoneName(ZoneOf(q))
