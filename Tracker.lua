@@ -130,6 +130,26 @@ local function Later(id)
   return out
 end
 
+-- a dotted line above a quest, across the tracker (inside its background)
+local DASH, DASH_GAP = 3, 3
+local function Perforate(b, show, key, point)
+  key, point = key or "sep", point or "TOPLEFT"
+  if not show then if b[key] then b[key]:Hide() end; return end
+  if not b[key] then b[key] = CreateFrame("Frame", nil, b); b[key]:SetHeight(1); b[key].dots = {} end
+  local sep = b[key]
+  local left = 0   -- kept inside the tracker's background
+  local w = math.max(1, (T:GetWidth() or WIDTH) - 12)
+  sep:ClearAllPoints(); sep:SetPoint("LEFT", b, point, -left, point == "TOPLEFT" and 1 or 0); sep:SetWidth(w)
+  local n = math.floor((w + DASH_GAP) / (DASH + DASH_GAP))
+  for i = 1, n do
+    local d = sep.dots[i]
+    if not d then d = sep:CreateTexture(nil, "ARTWORK"); d:SetColorTexture(1, 0.78, 0.2, 0.45); d:SetSize(DASH, 1); sep.dots[i] = d end
+    d:ClearAllPoints(); d:SetPoint("LEFT", sep, "LEFT", (i - 1) * (DASH + DASH_GAP), 0); d:Show()
+  end
+  for i = n + 1, #sep.dots do sep.dots[i]:Hide() end
+  sep:Show()
+end
+
 local function Line(i)
   local b = btns[i]
   if b then return b end
@@ -229,8 +249,12 @@ local function Build()
   T:SetMovable(true); T:SetResizable(true); T:EnableMouse(true); T:RegisterForDrag("LeftButton")
   if T.SetResizeBounds then T:SetResizeBounds(180, 60, 700, 1200)
   elseif T.SetMinResize then T:SetMinResize(180, 60); T:SetMaxResize(700, 1200) end
-  T:SetScript("OnDragStart", function(self) if not db().trackerLocked then self:StartMoving() end end)
-  T:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); Save() end)
+  T:SetScript("OnDragStart", function(self)
+    if db().trackerLocked then return end
+    if NS.TrackerItemsHide then NS.TrackerItemsHide() end   -- they don't ride along: put back when it's let go
+    self:StartMoving()
+  end)
+  T:SetScript("OnDragStop", function(self) self:StopMovingOrSizing(); Save(); NS.RefreshTracker() end)
   -- resize grip (bottom-right): sets the width and the tallest the tracker may grow
   T.grip = CreateFrame("Button", nil, T); T.grip:SetSize(14, 14); T.grip:SetPoint("BOTTOMRIGHT", -1, 1)
   T.grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
@@ -280,15 +304,154 @@ local function BlizzTracker(hide)
   end
 end
 
+---------------------------------------------------------------- quest items: the item a quest needs you to use
+-- A quest whose item you use from your bags (a Toxin Extractor, a torch, a sample jar...) gets that item's icon at the
+-- end of its line in the tracker: click it to use the item. The game's own "quest item" when it names one; otherwise a
+-- usable quest item in your bags whose name or "Use:" text shares a word with the quest's title or objectives.
+local GetItemInfoInstant = GetItemInfoInstant or (C_Item and C_Item.GetItemInfoInstant)
+local GetItemSpell = GetItemSpell or (C_Item and C_Item.GetItemSpell)
+local GetItemCooldown = (C_Container and C_Container.GetItemCooldown) or GetItemCooldown
+local STOP = {}
+for _, w in ipairs({ "quest", "slain", "bring", "speak", "items", "these", "their", "there", "which", "where", "about", "under", "until", "after" }) do STOP[w] = true end
+local function Words(text, out)
+  out = out or {}
+  for w in (text or ""):lower():gmatch("%a+") do if #w >= 5 and not STOP[w] then out[w] = true end end
+  return out
+end
+local scan
+local function UseText(bag, slot)
+  local lines = {}
+  if C_TooltipInfo and C_TooltipInfo.GetBagItem then
+    local ok, info = pcall(C_TooltipInfo.GetBagItem, bag, slot)
+    if ok and info and info.lines then for _, l in ipairs(info.lines) do lines[#lines + 1] = l.leftText end end
+  else
+    scan = scan or CreateFrame("GameTooltip", "PintsQuestItemScan", nil, "GameTooltipTemplate")
+    scan:SetOwner(UIParent, "ANCHOR_NONE"); scan:ClearLines(); scan:SetBagItem(bag, slot)
+    for k = 2, scan:NumLines() do local fs = _G["PintsQuestItemScanTextLeft" .. k]; lines[#lines + 1] = fs and fs:GetText() end
+  end
+  return table.concat(lines, " ")
+end
+-- qid -> { id, icon } for the quests in your log
+local function QuestItems()
+  local out = {}
+  local want = {}             -- logIndex -> { qid, words }
+  for i = 1, (GetNumQuestLogEntries and GetNumQuestLogEntries() or 0) do
+    local title, _, _, isHeader, _, isComplete, _, qid = GetQuestLogTitle(i)
+    if not isHeader and qid and not (isComplete == 1 or isComplete == true) then
+      local link, icon
+      if GetQuestLogSpecialItemInfo then local ok, l, ic = pcall(GetQuestLogSpecialItemInfo, i); if ok then link, icon = l, ic end end
+      local id = link and tonumber(link:match("item:(%d+)"))
+      if id then out[qid] = { id = id, icon = icon }
+      else
+        local w = Words(title)
+        for j = 1, (GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(i) or 0) do Words((GetQuestLogLeaderBoard(j, i)), w) end
+        want[#want + 1] = { qid, w }
+      end
+    end
+  end
+  if #want == 0 then return out end
+  -- usable quest items in your bags
+  local GetInfo = C_Container and C_Container.GetContainerItemInfo
+  local NumSlots = (C_Container and C_Container.GetContainerNumSlots) or GetContainerNumSlots
+  local seen = {}
+  for bag = 0, 4 do
+    for slot = 1, (NumSlots and NumSlots(bag) or 0) do
+      local id
+      if GetInfo then local info = GetInfo(bag, slot); id = info and info.itemID else id = GetContainerItemID and GetContainerItemID(bag, slot) end
+      if id and not seen[id] then
+        seen[id] = true
+        local _, _, _, _, icon, classID = GetItemInfoInstant(id)
+        if classID == 12 and GetItemSpell and GetItemSpell(id) then
+          local name = (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)) or (GetItemInfo and GetItemInfo(id))
+          local iw = Words((name or "") .. " " .. UseText(bag, slot))
+          local best, bestN
+          for _, q in ipairs(want) do
+            if not out[q[1]] then
+              local n = 0
+              for w in pairs(q[2]) do if iw[w] then n = n + 1 end end
+              if n > 0 and (not bestN or n > bestN) then best, bestN = q[1], n end
+            end
+          end
+          if best then out[best] = { id = id, icon = icon } end
+        end
+      end
+    end
+  end
+  return out
+end
+local itemBtns, itemsPending = {}, false
+local function ItemButton(k)
+  local b = itemBtns[k]
+  if b then return b end
+  -- (on UIParent, placed by position rather than pinned to the tracker: a secure button pinned to the tracker would lock
+  -- the whole tracker during a fight, and the game would block it from updating)
+  b = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
+  b:SetFrameStrata("LOW"); b:SetFrameLevel((T:GetFrameLevel() or 1) + 5)
+  b:SetSize(LINE_H * 2, LINE_H * 2)
+  b:RegisterForClicks("AnyUp", "AnyDown")
+  b:SetAttribute("type", "item")
+  -- a gold frame round the icon
+  b.edge = b:CreateTexture(nil, "BACKGROUND"); b.edge:SetAllPoints(); b.edge:SetColorTexture(1, 0.78, 0.2, 1)
+  b.icon = b:CreateTexture(nil, "ARTWORK"); b.icon:SetPoint("TOPLEFT", 2, -2); b.icon:SetPoint("BOTTOMRIGHT", -2, 2)
+  b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+  b.cd = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate"); b.cd:SetAllPoints()
+  b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+  b:SetScript("OnEnter", function(self)
+    if not self.itemID then return end
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:SetItemByID(self.itemID)
+    GameTooltip:AddLine("Click: use it", 0.6, 0.8, 1); GameTooltip:Show()
+  end)
+  b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  b:Hide()
+  itemBtns[k] = b
+  return b
+end
+-- lay the buttons on the quest lines (only outside a fight: the game won't let add-ons move them in one)
+local function PlaceItems(lineFor)
+  if InCombatLockdown() then itemsPending = true; return end
+  itemsPending = false
+  local n = 0
+  for line, it in pairs(lineFor) do
+    n = n + 1
+    local b = ItemButton(n)
+    b.itemID = it.id
+    b:SetAttribute("item", "item:" .. it.id)
+    b.icon:SetTexture(it.icon or (GetItemIcon and GetItemIcon(it.id)))
+    -- as tall as the quest's name and the objective line under it (just the name when there's no objective shown)
+    local h = it.tall and LINE_H * 2 or LINE_H + 4
+    b:SetSize(h, h)
+    local l, t = line:GetLeft(), line:GetTop()
+    if l and t then
+      local k = line:GetEffectiveScale() / UIParent:GetEffectiveScale()
+      b:ClearAllPoints(); b:SetPoint("TOPRIGHT", UIParent, "BOTTOMLEFT", l * k - 6, t * k + (it.tall and 0 or 2))
+      if GetItemCooldown then
+        local ok, st, dur = pcall(GetItemCooldown, it.id)
+        if ok and st and dur and dur > 1.5 then b.cd:SetCooldown(st, dur) else b.cd:Clear() end
+      end
+      b:Show()
+    else
+      b:Hide(); n = n - 1
+    end
+  end
+  for k = n + 1, #itemBtns do itemBtns[k]:Hide() end
+end
+function NS.TrackerItemsHide()
+  if InCombatLockdown() then return end
+  for _, ib in ipairs(itemBtns) do ib:Hide() end
+end
+NS.TrackerItemsPending = function() return itemsPending end
+
 function NS.RefreshTracker()
   local d = db()
   if not d then return end
-  if not d.tracker then if T then T:Hide() end; BlizzTracker(false); return end
+  if not d.tracker then if T then T:Hide(); NS.TrackerItemsHide() end; BlizzTracker(false); return end
   if not T then Build() end
   BlizzTracker(d.hideBlizzTracker)
   T:Show()
   local D = NS.Data and NS.Data()
   local rows = {}
+  local qItems = (d.trackerItems ~= false) and QuestItems() or {}
+  local lineFor = {}
   local n, numQuests = 0, nil
   if GetNumQuestLogEntries then n, numQuests = GetNumQuestLogEntries() end
   n = n or 0
@@ -310,9 +473,11 @@ function NS.RefreshTracker()
       -- a finished quest folds its objectives away; clicking "(Complete)" opens them again
       d.trackerDoneOpen = d.trackerDoneOpen or {}
       local folded = done and not failed and qid and not d.trackerDoneOpen[qid]
-      local head = (NS.arrowQuest == qid and "|TInterface\\Minimap\\MinimapArrow:18:18:0:0|t " or "") .. sw .. ("|cff%02x%02x%02x[%d] %s|r"):format(r * 255, g * 255, b * 255, level or 0, title)
+      local pre = (NS.arrowQuest == qid and "|TInterface\\Minimap\\MinimapArrow:18:18:0:0|t " or "") .. sw
+      local gap = ""
+      local head = pre .. gap .. ("|cff%02x%02x%02x[%d] %s|r"):format(r * 255, g * 255, b * 255, level or 0, title)
       local doneTag = (done and not failed) and ("  |cff40ff40(Complete)|r" .. (folded and " |cff40ff40+|r" or "")) or ""
-      rows[#rows + 1] = { qid = qid, logIndex = i, title = title, chain = #later, head = (done and not failed) and head or nil,
+      rows[#rows + 1] = { qid = qid, logIndex = i, title = title, chain = #later, head = (done and not failed) and head or nil, item = qItems[qid], pre = pre,
         doneTag = (done and not failed) and doneTag or nil,
         text = head .. (failed and "  |cffff2020(Failed)|r" or doneTag) .. (#later > 0 and ("  |cff8080a0+" .. #later .. "|r") or "") }
       local nb = GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(i) or 0
@@ -339,6 +504,7 @@ function NS.RefreshTracker()
   T.min.tex:SetTexture(d.trackerMin and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
   for _, b in ipairs(btns) do b:Hide() end
   T.more:Hide()
+  if (T.sizing or d.trackerMin) and not InCombatLockdown() then for _, ib in ipairs(itemBtns) do ib:Hide() end end
   if T.sizing then return end
   T.grip:SetShown(not d.trackerLocked and not d.trackerMin)
   if d.trackerMin then T:SetHeight(24); return end
@@ -354,6 +520,9 @@ function NS.RefreshTracker()
     b.qid, b.logIndex, b.header, b.future, b.titleText = row.qid, row.logIndex, row.header, row.future, row.title
     b:ClearAllPoints(); b:SetPoint("TOPLEFT", 6, y); b:SetPoint("RIGHT", T, "RIGHT", -6, 0)
     b.text:ClearAllPoints()
+    -- a dotted line above every quest and every zone (so each quest, and each zone, is boxed off)
+    Perforate(b, k > offset + 1 and (row.header or (row.qid and not row.obj and not row.future)) and true or false)
+    Perforate(b, false, "sepEnd")
     if row.header then
       local col = d.trackerZones and d.trackerZones[row.header]
       b.text:SetPoint("LEFT", 0, 0); b.text:SetPoint("RIGHT", 0, 0)
@@ -367,8 +536,13 @@ function NS.RefreshTracker()
       b.text:SetText(row.text)
     else
       b.tog:Hide()
-      b.text:SetPoint("LEFT", row.obj and 28 or 16, 0); b.text:SetPoint("RIGHT", 0, 0)
+      b.text:SetPoint("LEFT", row.obj and 40 or 16, 0); b.text:SetPoint("RIGHT", 0, 0)
       b.text:SetText(row.text)
+    end
+    if row.item and not row.obj and not row.future then
+      -- the item button hangs just outside the tracker's left edge, level with the quest (the list isn't pushed over)
+      local nxt = rows[k + 1]
+      lineFor[b] = { id = row.item.id, icon = row.item.icon, tall = (nxt and nxt.obj and shown < maxLines) and true or false }
     end
     b.doneBtn:Hide()
     if row.doneTag and row.head then
@@ -377,7 +551,7 @@ function NS.RefreshTracker()
       if font then b.measure:SetFont(font, size, flags) end
       b.measure:SetText(row.head); local x0 = b.measure:GetStringWidth()
       b.measure:SetText(row.doneTag); local w = b.measure:GetStringWidth()
-      local left = (row.chain and row.chain > 0) and 16 or 16
+      local left = 16
       local room = (b:GetWidth() or 0) - left
       if room > 0 and x0 < room then
         b.doneBtn.qid = row.qid
@@ -389,20 +563,32 @@ function NS.RefreshTracker()
     b:Show()
     y = y - LINE_H
   end
+  -- and one under the last line shown
+  if shown > 0 then Perforate(btns[shown], true, "sepEnd", "BOTTOMLEFT") end
   if #rows > offset + shown then
     T.more:ClearAllPoints(); T.more:SetPoint("TOPLEFT", 6, y)
     T.more:SetText(("... %d more - scroll"):format(#rows - offset - shown)); T.more:Show()
     y = y - LINE_H
   end
   T:SetHeight(-y + 8)
+  PlaceItems(lineFor)
 end
 
 local f = CreateFrame("Frame")
-for _, e in ipairs({ "PLAYER_LOGIN", "QUEST_LOG_UPDATE", "QUEST_WATCH_UPDATE", "UNIT_QUEST_LOG_CHANGED", "PLAYER_LEVEL_UP", "QUEST_TURNED_IN" }) do
+for _, e in ipairs({ "PLAYER_LOGIN", "QUEST_LOG_UPDATE", "QUEST_WATCH_UPDATE", "UNIT_QUEST_LOG_CHANGED", "PLAYER_LEVEL_UP", "QUEST_TURNED_IN",
+    "BAG_UPDATE_DELAYED", "PLAYER_REGEN_ENABLED", "BAG_UPDATE_COOLDOWN" }) do
   pcall(f.RegisterEvent, f, e)
 end
-local pending
+local pending, pendingBag
 f:SetScript("OnEvent", function(_, event)
+  if event == "PLAYER_REGEN_ENABLED" and not itemsPending then return end
+  -- bag changes and the end of a fight only touch the tracker's item buttons
+  if event == "BAG_UPDATE_DELAYED" or event == "BAG_UPDATE_COOLDOWN" or event == "PLAYER_REGEN_ENABLED" then
+    if pendingBag or pending then return end
+    pendingBag = true
+    C_Timer.After(0.3, function() pendingBag = nil; NS.RefreshTracker() end)
+    return
+  end
   if pending then return end
   pending = true
   C_Timer.After(event == "PLAYER_LOGIN" and 2 or 0.25, function()

@@ -1,5 +1,13 @@
 Pint's Quest Book - Changelog
 
+v1.8.7
+- Tracker: a quest you need to use an item for (a Toxin Extractor, a torch...) shows that item's icon, framed in gold, just left of the
+  tracker - as tall as the quest's name and its first objective line. Click it to use the item; hover for its tooltip. It shows
+  its cooldown too.
+  (The buttons don't lock the tracker in a fight, so it keeps updating in combat.)
+- Tracker: dotted lines above and below each quest and between zones.
+- Tracker: a quest's objectives ("0/10 Incendrites") are indented further under its name.
+
 v1.8.6
 - World map: a "Map icons" drop-down beside the book button - tick or untick quests, townsfolk, vendors,
   profession trainers, rares and more straight from the map.
