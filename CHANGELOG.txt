@@ -1,5 +1,10 @@
 Pint's Quest Book - Changelog
 
+v1.8.5
+- World map: the ! and ? of every zone now show on the continent maps (Kalimdor, Eastern Kingdoms) too, with
+  nearby givers sharing an icon. Option: "Quests on continent maps"; "Low-level quests" hides the grey ones.
+- Minimap: an icon right where you're standing fades almost away, so it no longer covers your arrow.
+
 v1.8.4
 - Minimap quest-area shading is about half as strong, so the map shows through.
 

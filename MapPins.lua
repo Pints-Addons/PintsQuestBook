@@ -65,6 +65,7 @@ function NS.MapDefaults(d)
   if m.knownProfs == nil then m.knownProfs = true end
   if m.qavail == nil then m.qavail = true end
   if m.qturn == nil then m.qturn = true end
+  if m.qcontinent == nil then m.qcontinent = true end
   if m.rares == nil then m.rares = true end
   if m.qareas == nil then m.qareas = true end
   if m.qlow == nil then m.qlow = true end
@@ -137,15 +138,38 @@ local function PinOK(q, m)
   if FOREVER and not q.checked and not m.qunverified then return false end
   return true
 end
-local function QuestPins(mapID, m)
+-- a zone's place on a continent map (for the continent view), worked out once per zone
+local rects = {}
+local function ZoneOnMap(zone, top)
+  local key = zone .. ">" .. top
+  local r = rects[key]
+  if r == nil then
+    r = false
+    if C_Map and C_Map.GetMapRectOnMap then
+      local ok, a, b, c, d = pcall(C_Map.GetMapRectOnMap, zone, top)
+      if ok and a and b and c and d and b > a and d > c then r = { a, b, c, d } end
+    end
+    rects[key] = r
+  end
+  return r or nil
+end
+local function QuestPins(mapID, m, continent)
   local D = NS.Data and NS.Data()
   if not D then return {} end
   local groups = {}
   local function put(kind, id, map, wx, wy, who)
     if not map or map < 0 then return end
     local _, mid, x, y = NS.Locate(map, wx, wy)
-    if mid ~= mapID then return end
-    local key = kind .. ":" .. math.floor(x * 10) .. ":" .. math.floor(y * 10)
+    if not mid then return end
+    local cell = 10                                    -- (zone map: givers a tenth of a percent apart are one pin)
+    if continent then
+      -- continent map: placed by where the zone sits on it; givers close together share a pin
+      local r = ZoneOnMap(mid, mapID)
+      if not r then return end
+      x, y = (r[1] + (r[2] - r[1]) * x / 100) * 100, (r[3] + (r[4] - r[3]) * y / 100) * 100
+      cell = 1
+    elseif mid ~= mapID then return end
+    local key = kind .. ":" .. math.floor(x * cell) .. ":" .. math.floor(y * cell)
     local g = groups[key]
     if not g then g = { x = x / 100, y = y / 100, kind = kind, quests = {}, who = who, map = map, wx = wx, wy = wy, low = true }; groups[key] = g end
     g.quests[#g.quests + 1] = id
@@ -297,8 +321,14 @@ local function MakeProvider()
     local mapID = map:GetMapID()
     if not mapID then return end
     local info = C_Map.GetMapInfo(mapID)
-    if not info or info.mapType ~= 3 then return end          -- zones and cities only
+    if not info then return end
     local m = d.map
+    -- a continent (Kalimdor, Eastern Kingdoms): just the quest ! and ? of every zone on it
+    if info.mapType == 2 then
+      if m.qcontinent ~= false then for _, g in ipairs(QuestPins(mapID, m, true)) do map:AcquirePin("PintsStorybookPinTemplate", g) end end
+      return
+    end
+    if info.mapType ~= 3 then return end                      -- zones and cities only
     if not townIndex then BuildTown() end
     local fac = (UnitFactionGroup("player") == "Horde") and 1 or 2
     local classID = CLASS_ID[select(2, UnitClass("player")) or ""]
@@ -345,6 +375,7 @@ function NS.ToggleMapOptions(anchor)
     add(16, -84, "Quests to pick up", ICON.qavail, function() return m.qavail end, function(v) m.qavail = v end)
     add(16, -104, "Quests to turn in", ICON.qturn, function() return m.qturn end, function(v) m.qturn = v end)
     add(16, -124, "Low-level quests", ICON.qavail, function() return m.qlow end, function(v) m.qlow = v end)
+    add(344, -312, "Quests on continent maps", ICON.qturn, function() return m.qcontinent ~= false end, function(v) m.qcontinent = v end)
     add(344, -272, "Quest objective areas", nil, function() return m.qareas end, function(v) m.qareas = v end)
     if FOREVER then add(344, -292, "Unchecked quests", ICON.qavail, function() return m.qunverified end, function(v) m.qunverified = v end) end
     head(16, -152, "Townsfolk")
@@ -533,7 +564,11 @@ local function Draw()
       local mm = db().map
       local k = mm.miniScale or 1
       b:SetSize((quest and 14 or 11) * k, (quest and 14 or 11) * k)
-      b:SetAlpha(mm.miniAlpha or 1)
+      -- add-ons can't draw under the game's own player arrow, so an icon right where you stand fades almost away
+      -- instead of covering it
+      local sx, sy = x / radius * half, y / radius * half
+      local close = math.sqrt(sx * sx + sy * sy) < 11 * k
+      b:SetAlpha((mm.miniAlpha or 1) * (close and 0.15 or 1))
       b.icon:SetTexture(ICON[p.cat or p.kind] or ICON.repair)
       if quest then b.icon:SetTexCoord(0, 1, 0, 1) else b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
       b:ClearAllPoints(); b:SetPoint("CENTER", Minimap, "CENTER", x / radius * half, y / radius * half)
