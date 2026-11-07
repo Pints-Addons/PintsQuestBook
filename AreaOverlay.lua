@@ -152,7 +152,7 @@ local function MiniTex(i)
   t = mini:CreateTexture(nil, "ARTWORK")
   t:SetTexture(DISC)
   if mask then t:AddMaskTexture(mask) end
-  for _, h in ipairs(holes) do t:AddMaskTexture(h) end
+  for _, h in ipairs(holes) do pcall(t.AddMaskTexture, t, h) end
   miniTex[i] = t
   return t
 end
@@ -168,7 +168,8 @@ local function DrawMini()
       mask = mini:CreateMaskTexture()
       mask:SetTexture(DISC, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
       mask:SetAllPoints(Minimap)
-      for k = 1, 5 do
+      -- (the game allows 3 masks per texture: the round minimap edge, you, and the nearest party member)
+      for k = 1, 2 do
         local h = mini:CreateMaskTexture()
         h:SetTexture(HOLE, "CLAMPTOWHITE", "CLAMPTOWHITE")
         h:SetSize(1, 1); h:SetPoint("CENTER", UIParent, "BOTTOMLEFT", -500, -500)
@@ -194,17 +195,23 @@ local function DrawMini()
     -- you: always the middle of the minimap; party members: where they are (when the game says)
     if holes[1] then
       holes[1]:ClearAllPoints(); holes[1]:SetSize(24, 24); holes[1]:SetPoint("CENTER", Minimap, "CENTER", 0, 0)
+      -- the nearest party member on the minimap
+      local bx, by, bd
       for k = 1, 4 do
-        local h = holes[k + 1]
         local qy, qx = UnitPosition("party" .. k)
-        h:ClearAllPoints()
         if qy and qx and not (issecretvalue and (issecretvalue(qy) or issecretvalue(qx))) and UnitExists("party" .. k) then
           local x, y = -(qx - py), qy - px
-          if rot then x, y = x * cs + y * sn, -x * sn + y * cs end
-          h:SetSize(16, 16); h:SetPoint("CENTER", Minimap, "CENTER", x / radius * half, y / radius * half)
-        else
-          h:SetSize(1, 1); h:SetPoint("CENTER", UIParent, "BOTTOMLEFT", -500, -500)
+          local dd = x * x + y * y
+          if dd < radius * radius and (not bd or dd < bd) then bx, by, bd = x, y, dd end
         end
+      end
+      local h = holes[2]
+      h:ClearAllPoints()
+      if bx then
+        if rot then bx, by = bx * cs + by * sn, -bx * sn + by * cs end
+        h:SetSize(16, 16); h:SetPoint("CENTER", Minimap, "CENTER", bx / radius * half, by / radius * half)
+      else
+        h:SetSize(1, 1); h:SetPoint("CENTER", UIParent, "BOTTOMLEFT", -500, -500)
       end
     end
     for _, s in ipairs(spots) do

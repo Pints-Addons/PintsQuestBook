@@ -1,5 +1,9 @@
 Pint's Quest Book - Changelog
 
+v1.8.3
+- Fixed thousands of "maximum number of mask textures" errors from 1.8.2 (the game allows fewer gaps than it
+  used): the shading now leaves a gap for you and your nearest party member.
+
 v1.8.2
 - Minimap: the quest-area shading leaves a gap around your arrow and your party's dots, so they're no longer hidden
   under it.
