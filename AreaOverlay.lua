@@ -13,7 +13,7 @@ local GetMouseFocus = GetMouseFocus or function() local t = GetMouseFoci and Get
 
 local function db() return NS.DB and NS.DB() end
 local R_YARDS = 42          -- radius of each spot (cells are ~45 yards apart, so neighbours merge)
-local MAP_ALPHA, MINI_ALPHA = 0.22, 0.28
+local MAP_ALPHA, MINI_ALPHA = 0.22, 0.13      -- (minimap: soft - the spots overlap and add up)
 local DISC = "Interface\\CHARACTERFRAME\\TempPortraitAlphaMask"
 
 local function On()

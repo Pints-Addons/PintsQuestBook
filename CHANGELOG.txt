@@ -1,5 +1,8 @@
 Pint's Quest Book - Changelog
 
+v1.8.4
+- Minimap quest-area shading is about half as strong, so the map shows through.
+
 v1.8.3
 - Fixed thousands of "maximum number of mask textures" errors from 1.8.2 (the game allows fewer gaps than it
   used): the shading now leaves a gap for you and your nearest party member.
