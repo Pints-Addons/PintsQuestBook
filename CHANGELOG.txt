@@ -1,5 +1,9 @@
 Pint's Quest Book - Changelog
 
+v1.8.9
+- Places near a zone's edge go in the right zone: a quest ender in northern Stranglethorn (Hemet Nesingwary) showed
+  as Westfall, whose map's corner reaches over it.
+
 v1.8.8
 - Tracker: zone names are a size larger.
 - Map: townsfolk icons (repair, innkeeper, mailbox, flight master...) show again - they could go missing for the whole

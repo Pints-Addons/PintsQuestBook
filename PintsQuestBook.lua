@@ -251,9 +251,30 @@ local function Locate(map, wx, wy)
   local res = {}
   if apiOrder then
     local a, b = (apiOrder == 1) and wx or wy, (apiOrder == 1) and wy or wx
+    -- which zone the game says is really at that spot on the continent: a zone's map is a rectangle, and its corners can
+    -- reach over a neighbour (northern Stranglethorn sits inside the bottom corner of Westfall's map)
+    local hit
+    if C_Map.GetMapInfoAtPosition then
+      local cx, cy = ApiPos(map, a, b, CONTINENT[map])
+      if cx then
+        local ok, info = pcall(C_Map.GetMapInfoAtPosition, CONTINENT[map], cx, cy)
+        if ok and info and info.mapID and info.mapID ~= CONTINENT[map] then hit = info.mapID end
+      end
+    end
+    local function Fits(id)
+      if not hit or id == hit then return true end
+      local info = C_Map.GetMapInfo(id)
+      return info and info.parentMapID == hit or false     -- (a city inside that zone)
+    end
     for _, z in ipairs(ZoneList(map)) do                 -- smallest map first, so cities win over the zone around them
       local x, y = ApiPos(map, a, b, z.id)
-      if x and x >= 0 and x <= 1 and y >= 0 and y <= 1 then res = { z.name, z.id, x * 100, y * 100 }; break end
+      if x and x >= 0 and x <= 1 and y >= 0 and y <= 1 and Fits(z.id) then res = { z.name, z.id, x * 100, y * 100 }; break end
+    end
+    if not res[1] and hit then   -- (the game named a map we don't list: fall back to the first one that holds the spot)
+      for _, z in ipairs(ZoneList(map)) do
+        local x, y = ApiPos(map, a, b, z.id)
+        if x and x >= 0 and x <= 1 and y >= 0 and y <= 1 then res = { z.name, z.id, x * 100, y * 100 }; break end
+      end
     end
   else
     Calibrate()
