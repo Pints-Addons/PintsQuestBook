@@ -10,6 +10,11 @@ v1.9
 - Tasks (the "Tasks" button, or /qb tasks): your own to-do list, each character its own. "Until done", "Item count"
   (e.g. water under 10 - Shift-click an item in) or "Place" (when you're in Orgrimmar). Item and place tasks remind
   you when they come true and come back after you tick them. Active tasks show in a small list you can move.
+- Hovering a quest (in the book's list or the tracker) shows its XP at your level, money, reputation and item rewards
+  - each item with its icon, quality colour and upgrade % (with Craft Upgrades).
+- A quest's rewards no longer go missing after you hand it in (they were read again once the window had closed).
+- Quests with no known turn-in now say where to hand them in when the quest's text names the place
+  ("Turn in: probably in Thunder Bluff").
 
 v1.8.11
 - WoW Forever: chapters for all the new dungeons (Hall of Thanes, Excavation Site: Wetlands, The Drowned City, Krol'dok

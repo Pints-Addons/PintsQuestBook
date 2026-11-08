@@ -79,6 +79,14 @@ local function FromLog(id)
 	local r = Rec(id)
 	r.t = title
 	if level and level > 0 then r.l = level end
+	-- the story text, for quests picked up before the recorder kept it
+	if not r.d and SelectQuestLogEntry and GetQuestLogQuestText and GetQuestLogSelection then
+		local was = GetQuestLogSelection()
+		SelectQuestLogEntry(idx)
+		local d = GetQuestLogQuestText()
+		if was and was > 0 then SelectQuestLogEntry(was) end
+		if type(d) == "string" and not (type(issecretvalue) == "function" and issecretvalue(d)) and d ~= "" then r.d = d end
+	end
 	if header then
 		local inst = Here()
 		r.zn = header
@@ -131,9 +139,10 @@ local function ApplyOne(id, r)
 	end
 	local full = FullXP(r, q[2] > 0 and q[2] or nil)
 	if full then q.fullXP = full end
-	if r.m then q[9] = r.m end
-	if r.ch then q[10] = r.ch end
-	if r.it then q[11] = r.it end
+	-- (an empty reading - the window had already closed - never wipes rewards known from before)
+	if r.m and r.m > 0 then q[9] = r.m end
+	if r.ch and r.ch ~= "" then q[10] = r.ch end
+	if r.it and r.it ~= "" then q[11] = r.it end
 	if r.s then
 		q[13] = NameIndex(r.s[1]) or q[13]
 		if r.s[2] then q[18], q[19], q[20] = r.s[2], r.s[3], r.s[4] end
@@ -143,6 +152,7 @@ local function ApplyOne(id, r)
 		if r.e[2] then q[21], q[22], q[23] = r.e[2], r.e[3], r.e[4] end
 	end
 	if r.o and r.o ~= "" then q[15] = r.o end
+	if r.d and r.d ~= "" then q.desc = r.d end              -- the story text (read for where to hand it in)
 	if r.p and (q[7] or 0) == 0 then q[7] = r.p end          -- the quest before it in a chain
 	if r.ty and (q[16] or 0) == 0 then q[16] = r.ty end      -- 81 = dungeon
 	if r.g and r.g > 1 then q[17] = r.g; if (q[16] or 0) == 0 then q[16] = 1 end end
@@ -216,9 +226,13 @@ end
 local function Ready() return rec and rec.off ~= true end
 
 local function ReadRewards(r)
+	-- only while the quest window is open: read after it closes, the lists come back empty and wiped what was known
+	-- (why a quest's rewards went missing once you'd handed it in)
+	if QuestFrame and not QuestFrame:IsShown() then return true end
 	local ch, m1 = ItemList("choice", GetNumQuestChoices and GetNumQuestChoices())
 	local it, m2 = ItemList("reward", GetNumQuestRewards and GetNumQuestRewards())
-	r.ch, r.it = ch, it
+	if ch ~= "" or not r.ch then r.ch = ch end
+	if it ~= "" or not r.it then r.it = it end
 	return not (m1 or m2)
 end
 
@@ -236,8 +250,10 @@ local function OnDetail()
 		r.ml = math.min(r.ml or lvl, lvl)
 	end
 	r.o = GetObjectiveText and GetObjectiveText() or r.o
+	local d = GetQuestText and GetQuestText()
+	if type(d) == "string" and not (type(issecretvalue) == "function" and issecretvalue(d)) and d ~= "" then r.d = d end
 	r.g = GetSuggestedGroupNum and GetSuggestedGroupNum() or r.g
-	if GetRewardMoney then r.m = GetRewardMoney() end
+	if GetRewardMoney then local m = GetRewardMoney(); if m and m > 0 then r.m = m end end
 	local xp = GetRewardXP and GetRewardXP()
 	if xp and xp > 0 and not r.xpTurnIn then r.xpRaw, r.xpLvl = xp, UnitLevel("player") end
 	if not ReadRewards(r) then C_Timer.After(0.5, function() ReadRewards(r); Changed(id, r) end) end
@@ -254,7 +270,7 @@ local function OnComplete()
 		local inst, x, y = Here()
 		r.e = { who, inst, x, y }
 	end
-	if GetRewardMoney then r.m = GetRewardMoney() end
+	if GetRewardMoney then local m = GetRewardMoney(); if m and m > 0 then r.m = m end end
 	if not ReadRewards(r) then C_Timer.After(0.5, function() ReadRewards(r); Changed(id, r) end) end
 	Changed(id, r)
 end

@@ -176,6 +176,51 @@ local function Text(s)
   return s
 end
 
+---------------------------------------------------------------- where to hand in, when nobody's recorded it yet
+-- reads the quest's own words ("...must reside on the Elder Rise in Thunder Bluff") for a zone or city name
+local HINT_WORDS = { "return", "bring", "take", "deliver", "report", "speak", "seek", "reside", "travel", "go to", "head to",
+  "find", "visit", "carry", "show", "back to", "meet", "await", "waiting", "send", "give", "hand" }
+local hintNames
+local function TurnInHint(q, extra)
+  if not q then return end
+  local src = ((q.desc or "") .. "\n" .. (extra or "") .. "\n" .. (q[15] or ""))
+  if type(issecretvalue) == "function" and issecretvalue(src) then return end
+  src = src:lower()
+  if not src:find("%a") then return end
+  if not hintNames then
+    hintNames = {}
+    for id, z in pairs(NS.ZONES) do
+      local n = z[1]
+      if type(n) == "string" and #n >= 4 and not NS.REMAP[id] then hintNames[#hintNames + 1] = { n:lower(), id, n } end
+      if n == "Stormwind City" then hintNames[#hintNames + 1] = { "stormwind", id, n } end
+    end
+    table.sort(hintNames, function(a, b) return #a[1] > #b[1] end)    -- longest first ("Stormwind City" before "Stormwind")
+  end
+  local taken, best, bestScore = {}, nil, nil
+  local own = ZoneOf(q)
+  for _, h in ipairs(hintNames) do
+    local from = 1
+    while true do
+      local a, b = src:find(h[1], from, true)
+      if not a then break end
+      from = b + 1
+      local before, after = src:sub(a - 1, a - 1), src:sub(b + 1, b + 1)
+      local free = true
+      for i = a, b do if taken[i] then free = false; break end end
+      if free and not before:find("%a") and not after:find("%a") then
+        for i = a, b do taken[i] = true end
+        local score = a / #src                                   -- later in the text counts a little more
+        local lead = src:sub(math.max(1, a - 70), a - 1)
+        for _, w in ipairs(HINT_WORDS) do if lead:find(w, 1, true) then score = score + 10; break end end
+        if h[2] == own then score = score - 5 end                -- the quest's own zone is the least telling
+        if not bestScore or score > bestScore then best, bestScore = h, score end
+      end
+    end
+  end
+  if best then return best[3], best[2] end
+end
+NS.TurnInHint = TurnInHint
+
 ---------------------------------------------------------------- world position -> zone map coordinates
 local CONTINENT = { [0] = 1415, [1] = 1414 }      -- Eastern Kingdoms, Kalimdor (uiMap ids)
 local zoneLists, swapXY, locCache = {}, nil, {}
@@ -557,6 +602,32 @@ local function ZoneRows(zone)
 end
 
 -- a rich tooltip for any quest (used by the tracker's chain steps)
+-- the item rewards, for a tooltip: icon, name in its quality colour, and the upgrade % (with Craft Upgrades)
+local function RewardLines(tt, q)
+  local S = _G.CraftUpgradesScore
+  local function items(spec, label)
+    if not spec or spec == "" then return end
+    tt:AddLine(label, 1, 0.82, 0)
+    for idS, nS in spec:gmatch("(%d+):(%d+)") do
+      local itemID, n = tonumber(idS), tonumber(nS)
+      local name, link, qual, _, _, _, _, _, equipLoc, icon = GetItemInfo(itemID)
+      if not name and C_Item and C_Item.RequestLoadItemDataByID then C_Item.RequestLoadItemDataByID(itemID) end
+      icon = icon or (GetItemIconByID and GetItemIconByID(itemID)) or "Interface\\Icons\\INV_Misc_QuestionMark"
+      local qc = qual and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[qual]
+      local up = ""
+      if link and S and S.Upgrade and equipLoc and equipLoc ~= "" then
+        local ok, pct, empty = pcall(S.Upgrade, link)
+        if ok and empty then up = "|cff40ff40empty slot|r" elseif ok and pct and pct >= 0.5 then up = ("|cff40ff40+%d%%|r"):format(math.floor(pct + 0.5)) end
+      end
+      tt:AddDoubleLine(("|T%s:16:16:0:0|t %s%s"):format(icon, name or "Loading...", n > 1 and (" x" .. n) or ""), up,
+        qc and qc.r or 1, qc and qc.g or 1, qc and qc.b or 1)
+    end
+  end
+  items(q[10], "Choose one of:")
+  items(q[11], ((q[10] or "") ~= "" and "You will also receive:") or "You will receive:")
+end
+NS.RewardLines = RewardLines
+
 function NS.QuestTooltip(tt, id)
   local q = Q(id)
   if not q then return false end
@@ -570,6 +641,10 @@ function NS.QuestTooltip(tt, id)
       tt:AddDoubleLine(w[1] .. ": " .. Name(w[2]), zn and ("%s %.1f, %.1f"):format(zn, x, y) or "", 0.9, 0.9, 0.9, 0.6, 0.8, 1)
     end
   end
+  if not Name(q[14]) then
+    local hz = TurnInHint(q)
+    if hz then tt:AddDoubleLine("Turn in: probably " .. hz, "(from the quest's text)", 0.9, 0.9, 0.9, 0.6, 0.6, 0.6) end
+  end
   if (q[15] or "") ~= "" then tt:AddLine(" "); tt:AddLine(Text(q[15]), 1, 1, 1, true) end
   local xp = XPAt(q, UnitLevel("player"))
   if xp > 0 or (q[9] or 0) > 0 then
@@ -580,6 +655,7 @@ function NS.QuestTooltip(tt, id)
   for f, v in (q[12] or ""):gmatch("(%-?%d+):(%-?%d+)") do
     tt:AddLine(("%+d %s"):format(tonumber(v), FactionName(tonumber(f))), 0.4, 1, 0.4)
   end
+  if (q[10] or "") ~= "" or (q[11] or "") ~= "" then tt:AddLine(" "); RewardLines(tt, q) end
   return true
 end
 
@@ -761,6 +837,11 @@ local function ListRow(i)
     local st = Status(self.id)
     GameTooltip:AddLine(STATUS_TEXT[st]:format(q[3] or 0), 1, 1, 1)
     if FullXP(q) > 0 then GameTooltip:AddLine(XPText(q, UnitLevel("player")) .. " XP at your level", 0.6, 0.8, 1) end
+    if (q[9] or 0) > 0 then GameTooltip:AddLine(Money(q[9]), 1, 1, 1) end
+    for f, v in (q[12] or ""):gmatch("(%-?%d+):(%-?%d+)") do
+      GameTooltip:AddLine(("%+d %s"):format(tonumber(v), FactionName(tonumber(f))), 0.4, 1, 0.4)
+    end
+    if (q[10] or "") ~= "" or (q[11] or "") ~= "" then GameTooltip:AddLine(" "); RewardLines(GameTooltip, q) end
     local party = PartyOn(self.id)
     if #party > 0 then GameTooltip:AddLine("Also on it: " .. table.concat(party, ", "), 0.4, 1, 0.4) end
     if not self.inZone then GameTooltip:AddLine("Part of this chain, picked up in " .. ZoneName(ZoneOf(q)), 0.7, 0.7, 0.7) end
@@ -1399,8 +1480,12 @@ function ShowDetail(id)
   text(("|cff5a4020Zone:|r %s"):format(zone), F_SMALL, INK_SOFT, 6)
   if q.checked then text(q.isNew and "|cff1a6a1aNew quest - recorded in game|r" or "|cff1a6a1aChecked in game|r", F_SMALL, INK_SOFT) end
   place("Starts:", q[13], q[18], q[19], q[20])
-  if q[14] ~= q[13] or q[21] ~= q[18] or q[22] ~= q[19] then place("Turn in:", q[14], q[21], q[22], q[23])
-  elseif Name(q[14]) then text("|cff5a4020Turn in:|r same place", F_SMALL, INK_SOFT) end
+  if not Name(q[14]) then
+    local logDesc = li and GetQuestLogQuestText and GetQuestLogQuestText()
+    local hz = TurnInHint(q, logDesc)
+    if hz then text(("|cff5a4020Turn in:|r probably in %s   |cff8a7050(from the quest's text)|r"):format(hz), F_SMALL, INK_SOFT) end
+  elseif q[14] ~= q[13] or q[21] ~= q[18] or q[22] ~= q[19] then place("Turn in:", q[14], q[21], q[22], q[23])
+  else text("|cff5a4020Turn in:|r same place", F_SMALL, INK_SOFT) end
   -- chain position
   local root = Root(id)
   if children[root] then
