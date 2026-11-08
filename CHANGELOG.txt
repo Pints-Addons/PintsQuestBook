@@ -1,5 +1,10 @@
 Pint's Quest Book - Changelog
 
+v1.8.11
+- WoW Forever: chapters for all the new dungeons (Hall of Thanes, Excavation Site: Wetlands, The Drowned City, Krol'dok
+  Stronghold, Alcaz Prison, Blackmaw Hold, Shaper's Terrace) and the new zones (Riverglades, Shen'dralas, Mount Hyjal,
+  Zephras Isle). Their quests fill in as you meet them in game.
+
 v1.8.10
 - After you die, the arrow points the way back to your corpse while you run back as a ghost (and goes back to what it
   was pointing at once you're alive). /qb corpse turns it off or on.

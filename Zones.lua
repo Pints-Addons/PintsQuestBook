@@ -28,6 +28,18 @@ NS.ZONES = {
   [-15001] = { "Ruins of Lordaeron", 3, 15, 22, "dungeon" },      -- new in WoW Forever
   [718] = { "Wailing Caverns", 3, 17, 24, "dungeon" },
   [-15002] = { "City of Dalaran", 3, 28, 35, "dungeon" },         -- new in WoW Forever
+  [-15003] = { "Hall of Thanes", 3, 13, 18, "dungeon" },          -- new in WoW Forever (and the ones below)
+  [-15004] = { "Excavation Site: Wetlands", 3, 26, 32, "dungeon" },
+  [-15005] = { "The Drowned City", 3, 35, 40, "dungeon" },
+  [-15006] = { "Krol'dok Stronghold", 3, 40, 45, "dungeon" },
+  [-15007] = { "Alcaz Prison", 3, 48, 53, "dungeon" },
+  [-15008] = { "Blackmaw Hold", 3, 55, 60, "dungeon" },
+  [-15009] = { "Shaper's Terrace", 3, 58, 60, "dungeon" },
+  -- new zones in WoW Forever
+  [-15101] = { "Riverglades", 1, 35, 45, "zone" },
+  [-15102] = { "Shen'dralas", 2, 40, 45, "zone" },
+  [-15103] = { "Mount Hyjal", 2, 60, 60, "zone" },
+  [-15104] = { "Zephras Isle", 5, 1, 12, "zone" },
   [1581] = { "The Deadmines", 3, 17, 26, "dungeon" }, [209] = { "Shadowfang Keep", 3, 22, 30, "dungeon" },
   [719] = { "Blackfathom Deeps", 3, 24, 32, "dungeon" }, [717] = { "The Stockade", 3, 24, 32, "dungeon" },
   [721] = { "Gnomeregan", 3, 29, 38, "dungeon" }, [491] = { "Razorfen Kraul", 3, 29, 38, "dungeon" },
@@ -55,7 +67,10 @@ NS.ZONES = {
 }
 -- sub-zones and alternate area IDs folded into the zone players think of
 -- dungeons only in WoW Forever (the modern game client) stay out of Classic Era
-if type(issecretvalue) ~= "function" then NS.ZONES[-15001] = nil; NS.ZONES[-15002] = nil end
+if type(issecretvalue) ~= "function" then
+  for id in pairs(NS.ZONES) do if id <= -15001 and id >= -15199 then NS.ZONES[id] = nil end end
+end
+NS.FOREVER_ZONE = function(id) return id <= -15001 and id >= -15199 end
 NS.REMAP = { [9] = 12, [24] = 12, [132] = 1, [154] = 85, [188] = 141, [702] = 141, [363] = 14, [220] = 215, [221] = 215, [35] = 33,
   [19] = 1977, [2079] = 15, [1116] = 357, [1769] = 361, [2257] = 1519, [133] = 721, [1517] = 1337, [978] = 1176, [1717] = 491,
   [2839] = 2597, [3429] = 3428, [1477] = 1417 }

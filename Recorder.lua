@@ -153,8 +153,14 @@ end
 local function ApplyZones()
 	for name, nz in pairs(rec.zones or {}) do
 		-- a zone you recorded before the book knew it (Ruins of Lordaeron, say): file its quests under the book's own entry
+		-- (the game's name can be a little different from the book's: "Excavation Site" for "Excavation Site: Wetlands")
+		local function Same(a, b)
+			if a == b then return true end
+			local x, y = a:lower():gsub("[^%w]", ""), b:lower():gsub("[^%w]", "")
+			return #y >= 6 and #x >= 6 and (x:find(y, 1, true) == 1 or y:find(x, 1, true) == 1)
+		end
 		for id, z in pairs(NS.ZONES) do
-			if z[1] == name and id ~= nz.id and not NS.REMAP[nz.id] then NS.REMAP[nz.id] = id end
+			if (z[1] == name or (NS.FOREVER_ZONE and NS.FOREVER_ZONE(id) and Same(z[1], name))) and id ~= nz.id and not NS.REMAP[nz.id] then NS.REMAP[nz.id] = id end
 		end
 		if not NS.ZONES[nz.id] and not NS.REMAP[nz.id] then
 			local group = (nz.cont == 0 and 1) or (nz.cont == 1 and 2) or 5
