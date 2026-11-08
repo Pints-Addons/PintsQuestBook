@@ -59,7 +59,7 @@ function NS.MapDefaults(d)
   local m = d.map
   local on = { repair = true, inn = true, mail = true, class = true, flight = true, qavail = true, qturn = true }
   for _, k in ipairs(NS.MAP_TOWN) do if m[k] == nil then m[k] = on[k] or false end end
-  for _, k in ipairs(NS.MAP_VEND) do if m[k] == nil then m[k] = false end end
+  for _, k in ipairs(NS.MAP_VEND) do if m[k] == nil then m[k] = (k == "v:reagents") end end   -- reagent vendors on
   m.prof = m.prof or {}
   for _, p in ipairs(NS.MAP_PROF) do if m.prof[p] == nil then m.prof[p] = false end end
   if m.knownProfs == nil then m.knownProfs = true end
@@ -88,6 +88,8 @@ local function MyProfs()
 end
 local function BuildTown()
   townIndex = {}
+  local wasMissed = NS.LocateMissed and NS.LocateMissed()
+  if NS.LocateMissedClear then NS.LocateMissedClear() end
   local T = _G.PintsTownData
   if not T then return end
   local function add(mapID, x, y, info, cont, wx, wy)
@@ -111,6 +113,11 @@ local function BuildTown()
     local _, mapID, x, y = NS.Locate(m[k], m[k + 1], m[k + 2])
     if mapID then add(mapID, x, y, mailInfo, m[k], m[k + 1], m[k + 2]) end
   end
+  -- some places weren't worked out yet (the game only allows so much per frame): build it again next time the map
+  -- draws, instead of keeping a list with most of the townsfolk missing (why the icons didn't show)
+  if NS.LocateMissed and NS.LocateMissed() then townIndex.incomplete = true end
+  -- (put back a miss from before, so the quest icons still get their redraw when the background work is done)
+  if wasMissed and NS.LocateMissedSet then NS.LocateMissedSet() end
 end
 
 -- the first enabled category for an NPC (decides its icon), or nil if nothing about it is wanted
@@ -329,7 +336,7 @@ local function MakeProvider()
       return
     end
     if info.mapType ~= 3 then return end                      -- zones and cities only
-    if not townIndex then BuildTown() end
+    if not townIndex or townIndex.incomplete then BuildTown() end
     local fac = (UnitFactionGroup("player") == "Horde") and 1 or 2
     local classID = CLASS_ID[select(2, UnitClass("player")) or ""]
     local profs = MyProfs()

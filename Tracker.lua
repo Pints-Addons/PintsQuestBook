@@ -159,6 +159,7 @@ local function Line(i)
   b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall"); b.text:SetPoint("LEFT", 0, 0); b.text:SetPoint("RIGHT", 0, 0)
   b.text:SetJustifyH("LEFT"); b.text:SetWordWrap(false)
   NS.Outline(b.text)
+  b.baseFont = { b.text:GetFont() }
   b.tog = CreateFrame("Button", nil, b); b.tog:SetSize(13, 13); b.tog:SetPoint("LEFT", 0, 0)
   b.tog.tex = b.tog:CreateTexture(nil, "ARTWORK"); b.tog.tex:SetAllPoints()
   b.tog:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight", "ADD")
@@ -523,6 +524,12 @@ function NS.RefreshTracker()
     -- a dotted line above every quest and every zone (so each quest, and each zone, is boxed off)
     Perforate(b, k > offset + 1 and (row.header or (row.qid and not row.obj and not row.future)) and true or false)
     Perforate(b, false, "sepEnd")
+    -- zone names a size up from the quests
+    local bf = b.baseFont
+    if bf and bf[1] then
+      local want = row.header and (bf[2] + 2) or bf[2]
+      if b.fontSize ~= want then b.text:SetFont(bf[1], want, bf[3]); b.fontSize = want end
+    end
     if row.header then
       local col = d.trackerZones and d.trackerZones[row.header]
       b.text:SetPoint("LEFT", 0, 0); b.text:SetPoint("RIGHT", 0, 0)

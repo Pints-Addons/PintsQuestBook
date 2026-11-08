@@ -276,6 +276,13 @@ local function WarmLocate()
       if q[21] and q[21] >= 0 then pts[#pts + 1] = { q[21], q[22], q[23] } end
     end
   end
+  -- and every townsperson and mailbox (their map icons)
+  local T = _G.PintsTownData
+  if T then
+    for _, n in pairs(T.npcs or {}) do local sp = n[6] or {}; for k = 1, #sp, 3 do pts[#pts + 1] = { sp[k], sp[k + 1], sp[k + 2] } end end
+    local m = T.mail or {}
+    for k = 1, #m, 3 do pts[#pts + 1] = { m[k], m[k + 1], m[k + 2] } end
+  end
   local i = 0
   local w = CreateFrame("Frame")
   w:SetScript("OnUpdate", function(self)
@@ -338,6 +345,10 @@ local function Waypoint(mapID, x, y, title)
 end
 
 NS.Locate = function(...) return Locate(...) end
+-- did a look-up just get put off (too much work in one frame)? then whatever was built from it is incomplete
+NS.LocateMissed = function() return locBudget.missed and true or false end
+NS.LocateMissedClear = function() locBudget.missed = nil end
+NS.LocateMissedSet = function() locBudget.missed = true end
 -- for other Pint's add-ons (Pint's Alts points the arrow at trainers and book vendors)
 QB.Locate = function(...) return Locate(...) end
 QB.MapToWorld = function(...) return NS.MapToWorld(...) end

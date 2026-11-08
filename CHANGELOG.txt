@@ -1,5 +1,11 @@
 Pint's Quest Book - Changelog
 
+v1.8.8
+- Tracker: zone names are a size larger.
+- Map: townsfolk icons (repair, innkeeper, mailbox, flight master...) show again - they could go missing for the whole
+  session if the map was opened soon after logging in.
+- New default: reagent vendors are ticked in the map icons. (Your own settings are kept.)
+
 v1.8.7
 - Tracker: a quest you need to use an item for (a Toxin Extractor, a torch...) shows that item's icon, framed in gold, just left of the
   tracker - as tall as the quest's name and its first objective line. Click it to use the item; hover for its tooltip. It shows
