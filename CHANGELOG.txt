@@ -1,5 +1,9 @@
 Pint's Quest Book - Changelog
 
+v1.8.10
+- After you die, the arrow points the way back to your corpse while you run back as a ghost (and goes back to what it
+  was pointing at once you're alive). /qb corpse turns it off or on.
+
 v1.8.9
 - Places near a zone's edge go in the right zone: a quest ender in northern Stranglethorn (Hemet Nesingwary) showed
   as Westfall, whose map's corner reaches over it.

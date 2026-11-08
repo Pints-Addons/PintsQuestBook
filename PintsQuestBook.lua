@@ -2355,6 +2355,12 @@ SlashCmdList.PINTSQUESTBOOK = function(msg)
   if msg == "deeds" or msg == "achievements" or msg == "ach" then QB.Toggle("deeds"); return end
   if msg:match("^find") then if NS.ToggleFinder then NS.ToggleFinder(msg:match("^find%s+(.+)$")) end; return end
   if msg == "arrow" then if NS.ClearArrow then NS.ClearArrow() end; return end
+  if msg == "corpse" then
+    db.corpseArrow = (db.corpseArrow == false)
+    print("|cffd4a24cQuest Book|r: arrow to your corpse when you die " .. (db.corpseArrow and "on." or "off."))
+    if db.corpseArrow and NS.CheckCorpse then NS.CheckCorpse() end
+    return
+  end
   if msg == "rares" or msg == "rare" then QB.Toggle("rares"); return end
   if msg == "rarealerts" or msg == "rare alerts" then
     db.rareAlerts = (db.rareAlerts == false) and true or false

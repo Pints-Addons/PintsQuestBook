@@ -157,6 +157,48 @@ restore:SetScript("OnEvent", function()
 	if t and t.wx then NS.ArrowTo(t.cont, t.wx, t.wy, t.title, t.sub, true) end
 end)
 
+---------------------------------------------------------------- the way back to your body
+-- Dead and running back as a ghost: the arrow points to your corpse (whatever it was pointing at before comes back
+-- once you're alive again). Off with /qb corpse.
+local corpseOn, before = false, nil
+local function CorpseSpot()
+	if not (C_DeathInfo and C_DeathInfo.GetCorpseMapPosition and C_Map and NS.MapToWorld) then return end
+	local mapID = C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+	-- the zone you're in, then the maps around it (you may have released into the next zone over)
+	for _ = 1, 4 do
+		if not mapID then return end
+		local ok, pos = pcall(C_DeathInfo.GetCorpseMapPosition, mapID)
+		if ok and pos then
+			local x, y = pos:GetXY()
+			if x and (x > 0 or y > 0) then return NS.MapToWorld(mapID, x * 100, y * 100) end
+		end
+		local info = C_Map.GetMapInfo(mapID)
+		mapID = info and info.parentMapID
+		if mapID == 0 then mapID = nil end
+	end
+end
+local function CheckCorpse(tries)
+	local d = db()
+	if not d or d.corpseArrow == false then return end
+	if UnitIsGhost("player") then
+		local cont, wx, wy = CorpseSpot()
+		if cont then
+			if not corpseOn then before = Saved(); corpseOn = true end
+			NS.ArrowTo(cont, wx, wy, "Your corpse", "Run back to it to come back to life", true)
+		elseif (tries or 0) < 5 then
+			C_Timer.After(1, function() CheckCorpse((tries or 0) + 1) end)   -- (the game can take a moment to say)
+		end
+	elseif corpseOn and not UnitIsDeadOrGhost("player") then
+		corpseOn = false
+		local t = before; before = nil
+		if t and t.wx then NS.ArrowTo(t.cont, t.wx, t.wy, t.title, t.sub, true) else NS.ClearArrow() end
+	end
+end
+NS.CheckCorpse = CheckCorpse
+local corpse = CreateFrame("Frame")
+for _, e in ipairs({ "PLAYER_ALIVE", "PLAYER_UNGHOST", "PLAYER_DEAD", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA" }) do pcall(corpse.RegisterEvent, corpse, e) end
+corpse:SetScript("OnEvent", function() C_Timer.After(0.5, CheckCorpse) end)
+
 ---------------------------------------------------------------- the finder
 -- every townsfolk entry on this continent: { name, sub, cats, fac, tclass, wx, wy }
 local LABEL, ICON = NS.MAP_LABEL or {}, NS.MAP_ICON or {}
