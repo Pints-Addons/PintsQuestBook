@@ -70,6 +70,8 @@ function NS.MapDefaults(d)
   if m.qareas == nil then m.qareas = true end
   if m.qlow == nil then m.qlow = true end
   if not m.qlowAll then m.qlowAll = true; m.qlow = true end   -- show every quest you can pick up, grey ones too (once)
+  -- WoW Forever: every giver the book knows gets a "!", not only the ones checked in game (faded until checked) (once)
+  if type(issecretvalue) == "function" and not m.qunvAll then m.qunvAll = true; m.qunverified = true end
   if m.enabled == nil then m.enabled = true end
   if m.minimap == nil then m.minimap = true end
   m.mapScale, m.mapAlpha = m.mapScale or 1, m.mapAlpha or 1          -- world map icons: size and opacity
@@ -178,10 +180,11 @@ local function QuestPins(mapID, m, continent)
     elseif mid ~= mapID then return end
     local key = kind .. ":" .. math.floor(x * cell) .. ":" .. math.floor(y * cell)
     local g = groups[key]
-    if not g then g = { x = x / 100, y = y / 100, kind = kind, quests = {}, who = who, map = map, wx = wx, wy = wy, low = true }; groups[key] = g end
+    if not g then g = { x = x / 100, y = y / 100, kind = kind, quests = {}, who = who, map = map, wx = wx, wy = wy, low = true, unv = FOREVER }; groups[key] = g end
     g.quests[#g.quests + 1] = id
     -- a giver with only grey (low-level) quests gets a grey "!"
     local q = D.quests[id]
+    if q.checked then g.unv = false end                -- (WoW Forever: faded until one of their quests is seen in game)
     if kind ~= "qavail" or not NS.IsTrivial(q[2]) then g.low = false end
   end
   for id in pairs(NS.Valid) do
@@ -240,7 +243,7 @@ function PintsStorybookPinMixin:OnAcquired(p)
   local m = db() and db().map or {}
   local k = m.mapScale or 1
   self:SetSize((quest and 18 or 15) * k, (quest and 18 or 15) * k)
-  self:SetAlpha(m.mapAlpha or 1)
+  self:SetAlpha((m.mapAlpha or 1) * ((quest and p.unv) and 0.6 or 1))
   self.icon:SetTexture(ICON[p.cat or p.kind] or ICON.repair)
   if quest then self.icon:SetTexCoord(0, 1, 0, 1); self.ring:Hide() else self.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92); self.ring:Show() end
   -- grey "!" for givers with only low-level quests; quest icons sit on top of townsfolk icons
@@ -273,9 +276,11 @@ function PintsStorybookPinMixin:OnMouseEnter()
     GameTooltip:AddLine(p.kind == "qturn" and "Ready to turn in:" or "Quests to pick up:", 0.6, 0.8, 1)
     for _, id in ipairs(p.quests) do
       local q = D.quests[id]
-      if p.kind == "qavail" and NS.IsTrivial(q[2]) then GameTooltip:AddLine(("[%d] %s"):format(q[2] or 0, q[1]), 0.6, 0.6, 0.6)
-      else GameTooltip:AddLine(("[%d] %s"):format(q[2] or 0, q[1]), 1, 1, 1) end
+      local note = (FOREVER and not q.checked) and "  |cff808080(not seen in game yet)|r" or ""
+      if p.kind == "qavail" and NS.IsTrivial(q[2]) then GameTooltip:AddLine(("[%d] %s"):format(q[2] or 0, q[1]) .. note, 0.6, 0.6, 0.6)
+      else GameTooltip:AddLine(("[%d] %s"):format(q[2] or 0, q[1]) .. note, 1, 1, 1) end
     end
+    if p.unv then GameTooltip:AddLine("From Classic's quest list - WoW Forever may have moved or changed this.", 0.6, 0.6, 0.6, true) end
     GameTooltip:AddLine("Click: open in the Quest Book   Shift-click: arrow", 0.5, 0.5, 0.5)
   else
     local i = p.info
@@ -384,7 +389,7 @@ function NS.ToggleMapOptions(anchor)
     add(16, -124, "Low-level quests", ICON.qavail, function() return m.qlow end, function(v) m.qlow = v end)
     add(344, -312, "Quests on continent maps", ICON.qturn, function() return m.qcontinent ~= false end, function(v) m.qcontinent = v end)
     add(344, -272, "Quest objective areas", nil, function() return m.qareas end, function(v) m.qareas = v end)
-    if FOREVER then add(344, -292, "Unchecked quests", ICON.qavail, function() return m.qunverified end, function(v) m.qunverified = v end) end
+    if FOREVER then add(344, -292, "Unchecked quests (faded)", ICON.qavail, function() return m.qunverified end, function(v) m.qunverified = v end) end
     head(16, -152, "Townsfolk")
     for i, k in ipairs(NS.MAP_TOWN) do
       add(16, -152 - i * 20, LABEL[k], ICON[k], function() return m[k] end, function(v) m[k] = v end)
@@ -601,8 +606,9 @@ local function Gather(cont, px, py)
       if map ~= cont or not wx or math.abs(wx - px) > reach or math.abs(wy - py) > reach then return end
       local key = kind .. ":" .. math.floor(wx) .. ":" .. math.floor(wy)
       local g = groups[key]
-      if not g then g = { kind = kind, quests = {}, who = who, map = map, wx = wx, wy = wy }; groups[key] = g; near[#near + 1] = { wx, wy, g } end
+      if not g then g = { kind = kind, quests = {}, who = who, map = map, wx = wx, wy = wy, unv = FOREVER }; groups[key] = g; near[#near + 1] = { wx, wy, g } end
       g.quests[#g.quests + 1] = id
+      if D.quests[id].checked then g.unv = false end
     end
     for id in pairs(NS.Valid) do
       local q = D.quests[id]
@@ -648,7 +654,7 @@ local function Draw()
       -- instead of covering it
       local sx, sy = x / radius * half, y / radius * half
       local close = math.sqrt(sx * sx + sy * sy) < 11 * k
-      b:SetAlpha((mm.miniAlpha or 1) * (close and 0.15 or 1))
+      b:SetAlpha((mm.miniAlpha or 1) * (close and 0.15 or 1) * ((quest and p.unv) and 0.6 or 1))
       b.icon:SetTexture(ICON[p.cat or p.kind] or ICON.repair)
       if quest then b.icon:SetTexCoord(0, 1, 0, 1) else b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
       b:ClearAllPoints(); b:SetPoint("CENTER", Minimap, "CENTER", x / radius * half, y / radius * half)

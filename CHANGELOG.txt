@@ -15,6 +15,9 @@ v1.9
 - A quest's rewards no longer go missing after you hand it in (they were read again once the window had closed).
 - Quests with no known turn-in now say where to hand them in when the quest's text names the place
   ("Turn in: probably in Thunder Bluff").
+- WoW Forever: the map and minimap now put a "!" on every quest giver the book knows, not only the ones already seen
+  in game. Givers not seen yet are faded until you meet them; ones found not to offer a quest stay off the map.
+  ("Unchecked quests (faded)" in the map icon options turns them off.)
 
 v1.8.11
 - WoW Forever: chapters for all the new dungeons (Hall of Thanes, Excavation Site: Wetlands, The Drowned City, Krol'dok
