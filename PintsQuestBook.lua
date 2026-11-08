@@ -1753,6 +1753,11 @@ local function CreateWindow()
   local deedsB = StoryButton(win, "Achievements", 116)
   local opt = StoryButton(win, "Options", 80)
   local raresB = StoryButton(win, "Rare Spawns", 106)
+  -- your own journal and to-do list (Journal.lua, Tasks.lua): windows of their own
+  local journalB = StoryButton(win, "Journal", 78)
+  journalB:SetScript("OnClick", function() if NS.ToggleJournal then NS.ToggleJournal() end end)
+  local tasksB = StoryButton(win, "Tasks", 64)
+  tasksB:SetScript("OnClick", function() if NS.ToggleTasks then NS.ToggleTasks() end end)
   raresB:SetScript("OnClick", function() curView = (curView == "rares") and "zone" or "rares"; Render() end)
   win.raresBtn = raresB
   deedsB:SetScript("OnClick", function() curView = (curView == "deeds") and "zone" or "deeds"; Render() end)
@@ -1765,7 +1770,7 @@ local function CreateWindow()
   jPick:SetScript("OnClick", function(self) if NS.JournalPick then NS.JournalPick(self) end end)
   jFlip:SetScript("OnClick", function() if NS.JournalFlip then NS.JournalFlip() end end)
   win.jFlip = jFlip
-  win.questBar, win.journalBar = { shut, toc, mine, deedsB, raresB, opt }, { jShut, jPick, jFlip }
+  win.questBar, win.journalBar = { shut, toc, mine, deedsB, raresB, journalB, tasksB, opt }, { jShut, jPick, jFlip }
   local function Centre(mids)   -- centre a group of buttons between the chapter buttons
     local gap, total = 8, 0
     for _, b in ipairs(mids) do total = total + b:GetWidth() end
@@ -2355,6 +2360,9 @@ SlashCmdList.PINTSQUESTBOOK = function(msg)
   if msg == "deeds" or msg == "achievements" or msg == "ach" then QB.Toggle("deeds"); return end
   if msg:match("^find") then if NS.ToggleFinder then NS.ToggleFinder(msg:match("^find%s+(.+)$")) end; return end
   if msg == "arrow" then if NS.ClearArrow then NS.ClearArrow() end; return end
+  if msg == "journal" then if NS.ToggleJournal then NS.ToggleJournal() end; return end
+  if msg == "tasks" or msg == "todo" then if NS.ToggleTasks then NS.ToggleTasks() end; return end
+  if msg == "levelmsg" then if NS.ToggleLevelMsg then NS.ToggleLevelMsg() end; return end
   if msg == "corpse" then
     db.corpseArrow = (db.corpseArrow == false)
     print("|cffd4a24cQuest Book|r: arrow to your corpse when you die " .. (db.corpseArrow and "on." or "off."))

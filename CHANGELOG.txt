@@ -1,5 +1,16 @@
 Pint's Quest Book - Changelog
 
+v1.9
+- Journal (the "Journal" button in the book, or /qb journal): written for you as you play - levels, quests handed in,
+  new spells, boss kills and your first kill of each creature (with Pint's Tips), deaths (and what killed you, where
+  the game says), first visits to zones and places, first rare or better finds, reputation ranks, profession
+  milestones, joining or leaving a guild. Search it, show one kind at a time, and add your own entries.
+- Level-up message: how long you spent at the level, your total played time, and what you gained (health, mana,
+  stats, talent points). /qb levelmsg turns it off or on.
+- Tasks (the "Tasks" button, or /qb tasks): your own to-do list, each character its own. "Until done", "Item count"
+  (e.g. water under 10 - Shift-click an item in) or "Place" (when you're in Orgrimmar). Item and place tasks remind
+  you when they come true and come back after you tick them. Active tasks show in a small list you can move.
+
 v1.8.11
 - WoW Forever: chapters for all the new dungeons (Hall of Thanes, Excavation Site: Wetlands, The Drowned City, Krol'dok
   Stronghold, Alcaz Prison, Blackmaw Hold, Shaper's Terrace) and the new zones (Riverglades, Shen'dralas, Mount Hyjal,
