@@ -499,6 +499,25 @@ function NS.RefreshTracker()
       end
     end
   end
+  -- the zone you're in goes to the top (its header and everything under it)
+  local here = GetRealZoneText and GetRealZoneText()
+  local here2 = GetZoneText and GetZoneText()
+  local from
+  for k, row in ipairs(rows) do
+    if row.header and (row.header == here or row.header == here2) then from = k; break end
+  end
+  if from then
+    local to = #rows
+    for k = from + 1, #rows do if rows[k].header then to = k - 1; break end end
+    rows[from].current = true
+    if from > 1 then
+      local moved = {}
+      for k = from, to do moved[#moved + 1] = rows[k] end
+      for k = 1, from - 1 do moved[#moved + 1] = rows[k] end
+      for k = to + 1, #rows do moved[#moved + 1] = rows[k] end
+      rows = moved
+    end
+  end
   -- drop zone headers that ended up with nothing under them (except collapsed ones, which stay clickable)
   if type(numQuests) == "number" and numQuests > total then total = numQuests end
   T.title:SetText(("Quests  |cffd0d0d0%d/%d|r"):format(total, MAX_QUESTLOG_QUESTS or 20))
@@ -527,13 +546,14 @@ function NS.RefreshTracker()
     -- zone names a size up from the quests
     local bf = b.baseFont
     if bf and bf[1] then
-      local want = row.header and (bf[2] + 2) or bf[2]
+      local want = row.current and (bf[2] + 3) or row.header and (bf[2] + 2) or bf[2]   -- (the zone you're in a little bigger still)
       if b.fontSize ~= want then b.text:SetFont(bf[1], want, bf[3]); b.fontSize = want end
     end
     if row.header then
       local col = d.trackerZones and d.trackerZones[row.header]
       b.text:SetPoint("LEFT", 0, 0); b.text:SetPoint("RIGHT", 0, 0)
-      b.text:SetText((col and "|cffd0a060+ " or "|cffffc84a") .. row.header .. "|r")
+      -- zone names in blue (folded ones a softer blue)
+      b.text:SetText((col and "|cff7f9fd0+ " or "|cff4fa8ff") .. row.header .. "|r")
       b.tog:Hide()
     elseif row.chain and row.chain > 0 then
       b.tog.qid = row.qid
@@ -582,7 +602,7 @@ function NS.RefreshTracker()
 end
 
 local f = CreateFrame("Frame")
-for _, e in ipairs({ "PLAYER_LOGIN", "QUEST_LOG_UPDATE", "QUEST_WATCH_UPDATE", "UNIT_QUEST_LOG_CHANGED", "PLAYER_LEVEL_UP", "QUEST_TURNED_IN",
+for _, e in ipairs({ "PLAYER_LOGIN", "ZONE_CHANGED_NEW_AREA", "QUEST_LOG_UPDATE", "QUEST_WATCH_UPDATE", "UNIT_QUEST_LOG_CHANGED", "PLAYER_LEVEL_UP", "QUEST_TURNED_IN",
     "BAG_UPDATE_DELAYED", "PLAYER_REGEN_ENABLED", "BAG_UPDATE_COOLDOWN" }) do
   pcall(f.RegisterEvent, f, e)
 end

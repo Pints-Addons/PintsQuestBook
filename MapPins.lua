@@ -162,6 +162,38 @@ local function ZoneOnMap(zone, top)
   end
   return r or nil
 end
+-- "!" colour by the quest's level against yours: 1 green (below you), 2 yellow (about your level), 3 orange (above you)
+-- (the game's "!" is already yellow; tinting it without greying it first keeps it bright: yellow x tint)
+local BANG = { { 0.35, 1, 0.35 }, { 1, 1, 1 }, { 1, 0.6, 0.6 } }
+local function Band(q)
+  local d = ((q[2] or 0) > 0) and (q[2] - UnitLevel("player")) or 0
+  return (d >= 3 and 3) or (d >= -2 and 2) or 1
+end
+-- a giver's colour is their easiest quest that still gives XP (grey ones only when that's all they have)
+local function AddBand(g, q)
+  if g.kind ~= "qavail" or NS.IsTrivial(q[2]) then return end
+  local b = Band(q)
+  if not g.band or b < g.band then g.band = b end
+end
+local function TintBang(tex, p)
+  if p.kind == "qavail" and p.low then tex:SetDesaturated(true); tex:SetVertexColor(0.85, 0.85, 0.85)
+  elseif p.kind == "qavail" and p.band then local c = BANG[p.band]; tex:SetDesaturated(false); tex:SetVertexColor(c[1], c[2], c[3])
+  else tex:SetDesaturated(false); tex:SetVertexColor(1, 1, 1) end
+end
+-- a spot on one map (percent) placed on another that holds it or sits inside it; nil when it isn't on that map
+function NS.MapProject(mid, x, y, mapID)
+  if mid == mapID then return x, y end
+  local r = ZoneOnMap(mid, mapID)
+  if r then
+    x, y = (r[1] + (r[2] - r[1]) * x / 100) * 100, (r[3] + (r[4] - r[3]) * y / 100) * 100
+  else
+    r = ZoneOnMap(mapID, mid)
+    if not r then return end
+    x, y = (x / 100 - r[1]) / (r[2] - r[1]) * 100, (y / 100 - r[3]) / (r[4] - r[3]) * 100
+  end
+  if x < 0 or x > 100 or y < 0 or y > 100 then return end
+  return x, y
+end
 local function QuestPins(mapID, m, continent)
   local D = NS.Data and NS.Data()
   if not D then return {} end
@@ -171,13 +203,21 @@ local function QuestPins(mapID, m, continent)
     local _, mid, x, y = NS.Locate(map, wx, wy)
     if not mid then return end
     local cell = 10                                    -- (zone map: givers a tenth of a percent apart are one pin)
-    if continent then
-      -- continent map: placed by where the zone sits on it; givers close together share a pin
+    if continent then cell = (continent == 1) and 0.5 or 1 end   -- (world / continent: givers close together share a pin)
+    if mid ~= mapID then
       local r = ZoneOnMap(mid, mapID)
-      if not r then return end
-      x, y = (r[1] + (r[2] - r[1]) * x / 100) * 100, (r[3] + (r[4] - r[3]) * y / 100) * 100
-      cell = 1
-    elseif mid ~= mapID then return end
+      if r then
+        -- the giver's map sits inside this one (a zone on the continent or world map, a city on the zone around it)
+        x, y = (r[1] + (r[2] - r[1]) * x / 100) * 100, (r[3] + (r[4] - r[3]) * y / 100) * 100
+        if x < 0 or x > 100 or y < 0 or y > 100 then return end
+      else
+        -- this map sits inside the giver's (a cave or a district shown on its own)
+        r = ZoneOnMap(mapID, mid)
+        if not r then return end
+        x, y = (x / 100 - r[1]) / (r[2] - r[1]) * 100, (y / 100 - r[3]) / (r[4] - r[3]) * 100
+        if x < 0 or x > 100 or y < 0 or y > 100 then return end
+      end
+    end
     local key = kind .. ":" .. math.floor(x * cell) .. ":" .. math.floor(y * cell)
     local g = groups[key]
     if not g then g = { x = x / 100, y = y / 100, kind = kind, quests = {}, who = who, map = map, wx = wx, wy = wy, low = true, unv = FOREVER }; groups[key] = g end
@@ -185,6 +225,7 @@ local function QuestPins(mapID, m, continent)
     -- a giver with only grey (low-level) quests gets a grey "!"
     local q = D.quests[id]
     if q.checked then g.unv = false end                -- (WoW Forever: faded until one of their quests is seen in game)
+    AddBand(g, q)
     if kind ~= "qavail" or not NS.IsTrivial(q[2]) then g.low = false end
   end
   for id in pairs(NS.Valid) do
@@ -216,6 +257,10 @@ end
 function PintsStorybookPinMixin:OnAcquired(p)
   self.p = p
   self:SetPosition(p.x, p.y)
+  if self.badge then self.badge:Hide(); self.rim:Hide() end    -- (pins are reused: undo a quest badge)
+  -- hover always works; clicks only while Ctrl is down, so a plain click goes straight to the map (zoom in / out)
+  if self.SetMouseClickEnabled then self:SetMouseMotionEnabled(true); self:SetMouseClickEnabled(IsControlKeyDown() and true or false) end
+  self.icon:ClearAllPoints(); self.icon:SetAllPoints()
   local quest = p.kind == "qavail" or p.kind == "qturn"
   if p.kind == "area" then
     -- a soft dot in the quest's colour where an objective can be done
@@ -242,13 +287,37 @@ function PintsStorybookPinMixin:OnAcquired(p)
   end
   local m = db() and db().map or {}
   local k = m.mapScale or 1
-  self:SetSize((quest and 18 or 15) * k, (quest and 18 or 15) * k)
-  self:SetAlpha((m.mapAlpha or 1) * ((quest and p.unv) and 0.6 or 1))
+  local size = (quest and 20 or 15) * k
+  self:SetSize(size, size)
+  self:SetAlpha(m.mapAlpha or 1)
   self.icon:SetTexture(ICON[p.cat or p.kind] or ICON.repair)
-  if quest then self.icon:SetTexCoord(0, 1, 0, 1); self.ring:Hide() else self.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92); self.ring:Show() end
+  self.icon:ClearAllPoints()
+  if p.kind == "qavail" then
+    -- quests to pick up: just the yellow !, at full strength (no badge)
+    self.icon:SetPoint("CENTER", 0, 0); self.icon:SetSize(size, size)
+    self.icon:SetTexCoord(0, 1, 0, 1); self.ring:Hide()
+  elseif quest then
+    -- drawn like the game's own quest markers: a yellow ! or ? on a dark round badge with a gold rim
+    if not self.badge then
+      self.badge = self:CreateTexture(nil, "BACKGROUND")
+      self.badge:SetTexture("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask"); self.badge:SetVertexColor(0.16, 0.09, 0.04, 0.95)
+      self.badge:SetAllPoints()
+      self.rim = self:CreateTexture(nil, "OVERLAY")
+      self.rim:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    end
+    local r = size / 25                                    -- (the rim art is drawn round a 25-pixel button)
+    self.rim:SetSize(54 * r, 54 * r); self.rim:ClearAllPoints(); self.rim:SetPoint("TOPLEFT", -2 * r, 4 * r)
+    self.badge:Show(); self.rim:Show()
+    self.icon:SetPoint("CENTER", 0, 0); self.icon:SetSize(size * 0.72, size * 0.72)
+    self.icon:SetTexCoord(0, 1, 0, 1); self.ring:Hide()
+  else
+    if self.badge then self.badge:Hide(); self.rim:Hide() end
+    self.icon:SetAllPoints()
+    self.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92); self.ring:Show()
+  end
   -- grey "!" for givers with only low-level quests; quest icons sit on top of townsfolk icons
-  self.icon:SetDesaturated(quest and p.low and true or false)
-  if quest and p.low then self.icon:SetVertexColor(0.85, 0.85, 0.85) else self.icon:SetVertexColor(1, 1, 1) end
+  -- "!" coloured by level (green below you, yellow at your level, orange above, grey for no XP)
+  TintBang(self.icon, p)
   if self.UseFrameLevelType then
     pcall(self.UseFrameLevelType, self, quest and "PIN_FRAME_LEVEL_ACTIVE_QUEST" or "PIN_FRAME_LEVEL_AREA_POI")
     if self.ApplyFrameLevel then pcall(self.ApplyFrameLevel, self) end
@@ -260,14 +329,16 @@ function PintsStorybookPinMixin:OnMouseEnter()
   local p = self.p
   if not p then return end
   GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+  -- on the world map a plain click belongs to the map (zoom in / out); the icons take Ctrl-clicks there
+  local C = (self:GetParent() ~= Minimap) and "Ctrl-" or ""
   if p.rare then
-    if NS.RareTooltip then NS.RareTooltip(GameTooltip, p.rare) end
+    if NS.RareTooltip then NS.RareTooltip(GameTooltip, p.rare, C .. "click: point the arrow   " .. C .. "Shift-click: open in the Quest Book") end
     GameTooltip:Show(); return
   end
   if p.kind == "area" then
     GameTooltip:AddLine(p.title or "Quest", p.r, p.g, p.b)
     GameTooltip:AddLine(p.obj, 1, 1, 1)
-    GameTooltip:AddLine("Click: open in the Quest Book   (Ctrl-click a quest in the tracker to change its colour)", 0.5, 0.5, 0.5, true)
+    GameTooltip:AddLine(C .. "click: open in the Quest Book   (Ctrl-click a quest in the tracker to change its colour)", 0.5, 0.5, 0.5, true)
     GameTooltip:Show(); return
   end
   if p.quests then
@@ -281,7 +352,7 @@ function PintsStorybookPinMixin:OnMouseEnter()
       else GameTooltip:AddLine(("[%d] %s"):format(q[2] or 0, q[1]) .. note, 1, 1, 1) end
     end
     if p.unv then GameTooltip:AddLine("From Classic's quest list - WoW Forever may have moved or changed this.", 0.6, 0.6, 0.6, true) end
-    GameTooltip:AddLine("Click: open in the Quest Book   Shift-click: arrow", 0.5, 0.5, 0.5)
+    GameTooltip:AddLine(C .. "click: open in the Quest Book   " .. C .. "Shift-click: arrow", 0.5, 0.5, 0.5)
   else
     local i = p.info
     GameTooltip:AddLine(i.name, 1, 0.82, 0)
@@ -290,14 +361,30 @@ function PintsStorybookPinMixin:OnMouseEnter()
     for _, c in ipairs(i.cats) do labels[#labels + 1] = LABEL[c] or (c:sub(1, 2) == "p:" and (c:sub(3) .. " Trainer")) or c end
     if i.cats[1] ~= "mail" then GameTooltip:AddLine(table.concat(labels, ", "), 1, 1, 1, true) end
     GameTooltip:AddLine(("%.1f, %.1f"):format(p.x * 100, p.y * 100), 0.6, 0.6, 0.6)
-    if p.wx then GameTooltip:AddLine("Click: point the arrow here", 0.5, 0.5, 0.5) end
+    if p.wx then GameTooltip:AddLine(C .. "click: point the arrow here", 0.5, 0.5, 0.5) end
   end
   GameTooltip:Show()
 end
 function PintsStorybookPinMixin:OnMouseLeave() GameTooltip:Hide() end
+-- (no longer used: moving the map from add-on code "tainted" it, and the game then blocked its own quest icons in a
+-- fight. World map icons now only take clicks while Ctrl is held - see ClickWithCtrl - so plain clicks reach the map.)
+local function PassToMap(pin, button)
+  local map = pin.GetMap and pin:GetMap()
+  if not map then return end
+  local handled = false
+  if map.ProcessCanvasClickHandlers and map.GetNormalizedCursorPosition then
+    local ok, r = pcall(map.ProcessCanvasClickHandlers, map, button, map:GetNormalizedCursorPosition())
+    handled = ok and r
+  end
+  if handled then return end
+  if button == "RightButton" then
+    if map.NavigateToParentMap then map:NavigateToParentMap() end
+  elseif map.NavigateToCursor then map:NavigateToCursor() end
+end
 function PintsStorybookPinMixin:OnClick(button)
   local p = self.p
   if not p then return end
+  if self:GetParent() ~= Minimap and not IsControlKeyDown() then return end
   if p.kind == "area" then
     if PintsQuestBook and PintsQuestBook.OpenQuest then PintsQuestBook.OpenQuest(p.qid) end
     return
@@ -335,12 +422,15 @@ local function MakeProvider()
     local info = C_Map.GetMapInfo(mapID)
     if not info then return end
     local m = d.map
-    -- a continent (Kalimdor, Eastern Kingdoms): just the quest ! and ? of every zone on it
-    if info.mapType == 2 then
-      if m.qcontinent ~= false then for _, g in ipairs(QuestPins(mapID, m, true)) do map:AcquirePin("PintsStorybookPinTemplate", g) end end
+    -- the world and the continents (Azeroth, Kalimdor, Eastern Kingdoms): just the quest ! and ? of every zone on them
+    if info.mapType == 1 or info.mapType == 2 then
+      if m.qcontinent ~= false then for _, g in ipairs(QuestPins(mapID, m, info.mapType)) do map:AcquirePin("PintsStorybookPinTemplate", g) end end
       return
     end
-    if info.mapType ~= 3 then return end                      -- zones and cities only
+    if info.mapType ~= 3 then                                 -- caves, districts and other inner maps: the quest ! and ? only
+      if info.mapType and info.mapType > 3 then for _, g in ipairs(QuestPins(mapID, m)) do map:AcquirePin("PintsStorybookPinTemplate", g) end end
+      return
+    end
     if not townIndex or townIndex.incomplete then BuildTown() end
     local fac = (UnitFactionGroup("player") == "Horde") and 1 or 2
     local classID = CLASS_ID[select(2, UnitClass("player")) or ""]
@@ -355,6 +445,19 @@ local function MakeProvider()
   WorldMapFrame:AddDataProvider(Provider)
 end
 function NS.RefreshMap() if Provider and WorldMapFrame:IsShown() then Provider:RefreshAllData() end end
+-- pressing or letting go of Ctrl: world map icons start or stop taking clicks
+do
+  local cf = CreateFrame("Frame")
+  cf:RegisterEvent("MODIFIER_STATE_CHANGED")
+  cf:SetScript("OnEvent", function(_, _, key)
+    if key ~= "LCTRL" and key ~= "RCTRL" then return end
+    if not (WorldMapFrame and WorldMapFrame:IsShown() and WorldMapFrame.EnumeratePinsByTemplate) then return end
+    local on = IsControlKeyDown() and true or false
+    for pin in WorldMapFrame:EnumeratePinsByTemplate("PintsStorybookPinTemplate") do
+      if pin.SetMouseClickEnabled then pin:SetMouseClickEnabled(on) end
+    end
+  end)
+end
 
 ---------------------------------------------------------------- filter panel (also opened from the book's Options)
 local panel
@@ -609,6 +712,8 @@ local function Gather(cont, px, py)
       if not g then g = { kind = kind, quests = {}, who = who, map = map, wx = wx, wy = wy, unv = FOREVER }; groups[key] = g; near[#near + 1] = { wx, wy, g } end
       g.quests[#g.quests + 1] = id
       if D.quests[id].checked then g.unv = false end
+      if kind == "qavail" then g.low = (g.low ~= false) and NS.IsTrivial(D.quests[id][2]) or false end
+      AddBand(g, D.quests[id])
     end
     for id in pairs(NS.Valid) do
       local q = D.quests[id]
@@ -654,9 +759,10 @@ local function Draw()
       -- instead of covering it
       local sx, sy = x / radius * half, y / radius * half
       local close = math.sqrt(sx * sx + sy * sy) < 11 * k
-      b:SetAlpha((mm.miniAlpha or 1) * (close and 0.15 or 1) * ((quest and p.unv) and 0.6 or 1))
+      b:SetAlpha((mm.miniAlpha or 1) * (close and 0.15 or 1) )
       b.icon:SetTexture(ICON[p.cat or p.kind] or ICON.repair)
       if quest then b.icon:SetTexCoord(0, 1, 0, 1) else b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) end
+      TintBang(b.icon, p)
       b:ClearAllPoints(); b:SetPoint("CENTER", Minimap, "CENTER", x / radius * half, y / radius * half)
       b:Show()
     end

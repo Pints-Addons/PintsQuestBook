@@ -272,7 +272,7 @@ function NS.RarePins(mapID)
   end
   return out
 end
-function NS.RareTooltip(tt, id)
+function NS.RareTooltip(tt, id, hint)
   local D = R(); local r = D and D.rares[id]; if not r then return end
   local rec = Rec()
   tt:AddLine(r[1] .. "  |cffffffff" .. LevelText(r) .. "|r", 1, 0.5, 0.1)
@@ -284,7 +284,7 @@ function NS.RareTooltip(tt, id)
     local info = D.items[loot[k]]
     if info then tt:AddDoubleLine("|cff" .. (QUALITY[info[2]] or "ffffff") .. info[1] .. "|r", (loot[k + 1] >= 1 and math.floor(loot[k + 1] + 0.5) or loot[k + 1]) .. "%", 1, 1, 1, 0.7, 0.7, 0.7) end
   end
-  tt:AddLine("Click: point the arrow   Shift-click: open in the Quest Book", 0.5, 0.5, 0.5)
+  if hint ~= false then tt:AddLine(hint or "Click: point the arrow   Shift-click: open in the Quest Book", 0.5, 0.5, 0.5) end
 end
 function NS.OpenRare(id)
   local zn = NS.RareZone(id)

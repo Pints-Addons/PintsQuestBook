@@ -13,7 +13,7 @@ local GetMouseFocus = GetMouseFocus or function() local t = GetMouseFoci and Get
 
 local function db() return NS.DB and NS.DB() end
 local R_YARDS = 42          -- radius of each spot (cells are ~45 yards apart, so neighbours merge)
-local MAP_ALPHA, MINI_ALPHA = 0.22, 0.13      -- (minimap: soft - the spots overlap and add up)
+local MAP_ALPHA, MINI_ALPHA = 0.3, 0.2        -- (minimap: soft - the spots overlap and add up)
 local DISC = "Interface\\CHARACTERFRAME\\TempPortraitAlphaMask"
 
 local function On()
@@ -64,13 +64,25 @@ function NS.DrawMapAreas()
       self.t = self.t + el
       if self.t < 0.1 then return end
       self.t = 0
-      if not self:IsVisible() or #mapBlobs == 0 or not MouseIsOver(self) then
-        if self.tip then GameTooltip:Hide(); self.tip = nil end
-        return
-      end
+      -- (measured by hand: the modern client won't always say whether the mouse is over the map)
       local s = self:GetEffectiveScale()
       local cx, cy = GetCursorPosition()
-      cx, cy = cx / s - self:GetLeft(), self:GetTop() - cy / s
+      local L, T = self:GetLeft(), self:GetTop()
+      local inside = false
+      if L and T and self:IsVisible() and #mapBlobs > 0 then
+        cx, cy = cx / s - L, T - cy / s
+        inside = cx >= 0 and cy >= 0 and cx <= self:GetWidth() and cy <= self:GetHeight()
+        -- and only within the part of the map you can see (it can be zoomed in)
+        local sc = WorldMapFrame.ScrollContainer
+        if inside and sc and sc.GetLeft and sc:GetLeft() then
+          local x, y = select(1, GetCursorPosition()) / sc:GetEffectiveScale(), select(2, GetCursorPosition()) / sc:GetEffectiveScale()
+          inside = x >= sc:GetLeft() and x <= sc:GetRight() and y >= sc:GetBottom() and y <= sc:GetTop()
+        end
+      end
+      if not inside then
+        if self.tip then if GameTooltip:GetOwner() == self then GameTooltip:Hide() end; self.tip = nil end
+        return
+      end
       local hits, seen = {}, {}
       for _, b in ipairs(mapBlobs) do
         local dx, dy = (cx - b[1]) / b[3], (cy - b[2]) / b[4]
@@ -80,12 +92,24 @@ function NS.DrawMapAreas()
         end
       end
       local focus = GetMouseFoci and GetMouseFoci()[1] or (GetMouseFocus and GetMouseFocus())
-      if #hits == 0 or (focus and focus ~= WorldMapFrame.ScrollContainer and focus.pinTemplate) then
-        if self.tip then GameTooltip:Hide(); self.tip = nil end
+      -- our own ! ? icons have their own tooltip; a tooltip something else is showing (the game's quest areas) wins
+      local busy = focus and focus.pinTemplate == "PintsStorybookPinTemplate"
+      if not busy and GameTooltip:IsShown() and GameTooltip:GetOwner() ~= self then busy = true end
+      if #hits == 0 or busy then
+        if self.tip then if GameTooltip:GetOwner() == self then GameTooltip:Hide() end; self.tip = nil end
         return
       end
       GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
-      for _, p in ipairs(hits) do GameTooltip:AddDoubleLine(p.title, p.obj, p.r, p.g, p.b, 1, 1, 1) end
+      local last
+      for _, p in ipairs(hits) do
+        if p.title ~= last then GameTooltip:AddLine(p.title, p.r, p.g, p.b); last = p.title end
+        local txt = p.obj
+        for j = 1, (p.index and GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(p.index) or 0) do
+          local t = GetQuestLogLeaderBoard(j, p.index)
+          if type(t) == "string" and p.obj and t:find(p.obj, 1, true) then txt = t; break end
+        end
+        if txt then GameTooltip:AddLine("     - " .. txt, 1, 1, 1) end
+      end
       GameTooltip:Show()
       self.tip = true
     end)
@@ -94,7 +118,7 @@ function NS.DrawMapAreas()
   local n = 0
   local mapID = WorldMapFrame:GetMapID()
   local info = mapID and C_Map.GetMapInfo(mapID)
-  if On() and info and info.mapType == 3 and NS.AreaPins then
+  if On() and info and (info.mapType or 0) >= 3 and NS.AreaPins then
     local zw, zh = ZoneYards(mapID)
     local w, h = canvas:GetWidth(), canvas:GetHeight()
     if zw and zw > 0 and w > 0 then
@@ -137,7 +161,7 @@ local function Collect(cont)
       for _, o in ipairs(objs) do
         if not NS.ObjectiveDone or not NS.ObjectiveDone(q.index, o[1]) then
           for k = 2, #o, 3 do
-            if o[k] == cont then spots[#spots + 1] = { o[k + 1], o[k + 2], r, g, b } end
+            if o[k] == cont then spots[#spots + 1] = { o[k + 1], o[k + 2], r, g, b, title = q.title, obj = o[1], index = q.index } end
           end
         end
       end
@@ -224,11 +248,63 @@ local function DrawMini()
         t:ClearAllPoints(); t:SetPoint("CENTER", Minimap, "CENTER", x / radius * half, y / radius * half)
         t:SetSize(size, size)
         t:SetVertexColor(s[3], s[4], s[5], alpha)
+        t.sp = s
         t:Show()
       end
     end
   end
   for i = n + 1, #miniTex do miniTex[i]:Hide() end
+  -- hovering a spot: which quest it's for and what to do there. (Worked out from the drawn shading itself: each disc
+  -- under the cursor, measured as a circle - no map maths to go wrong.)
+  local over = false
+  local cx, cy = GetCursorPosition()
+  if n > 0 then
+    -- the cursor inside the round minimap (measured, as the modern client won't always say whether the mouse is over it)
+    local mx, my = Minimap:GetCenter()
+    local msc = Minimap:GetEffectiveScale()
+    if mx then
+      local dx, dy, mr = cx / msc - mx, cy / msc - my, Minimap:GetWidth() / 2
+      over = dx * dx + dy * dy <= mr * mr
+    end
+  end
+  if over then
+    local list, seen = {}, {}
+    for i = 1, n do
+      local t = miniTex[i]
+      local sp = t.sp
+      local tx, ty = t:GetCenter()
+      if sp and sp.title and tx then
+        local sc = t:GetEffectiveScale()
+        local r = t:GetWidth() / 2
+        local dx, dy = cx / sc - tx, cy / sc - ty
+        if dx * dx + dy * dy <= r * r then
+          local key = sp.title .. "\0" .. (sp.obj or "")
+          if not seen[key] then seen[key] = true; list[#list + 1] = sp end
+        end
+      end
+    end
+    if #list > 0 then
+      local owner = GameTooltip:IsShown() and GameTooltip:GetOwner()
+      if not owner or owner == mini or (owner == Minimap and GameTooltip:NumLines() == 0) then
+        GameTooltip:SetOwner(mini, "ANCHOR_CURSOR")
+        local last
+        for _, sp in ipairs(list) do
+          if sp.title ~= last then GameTooltip:AddLine(sp.title, sp[3], sp[4], sp[5]); last = sp.title end
+          -- the objective with its progress, from your quest log
+          local txt = sp.obj
+          for j = 1, (GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(sp.index) or 0) do
+            local t = GetQuestLogLeaderBoard(j, sp.index)
+            if type(t) == "string" and sp.obj and t:find(sp.obj, 1, true) then txt = t; break end
+          end
+          if txt then GameTooltip:AddLine("     - " .. txt, 1, 1, 1) end
+        end
+        GameTooltip:Show()
+        mini.tip = true
+      end
+      return
+    end
+  end
+  if mini and mini.tip then mini.tip = nil; if GameTooltip:GetOwner() == mini then GameTooltip:Hide() end end
 end
 
 local f = CreateFrame("Frame")

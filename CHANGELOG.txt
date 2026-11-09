@@ -1,5 +1,21 @@
 Pint's Quest Book - Changelog
 
+v1.9.1
+- Quest "!" and "?" now show on every level of the map: the world map, continents, zones, cities (a zone's map
+  now shows the givers in its city too, e.g. Orgrimmar's on Durotar), and caves or inner maps.
+- World map icons no longer get in the way of moving around the map: a plain left-click zooms in and right-click
+  zooms out, even on an icon. Ctrl-click an icon to open it in the Quest Book, Ctrl-Shift-click for the arrow.
+  (Minimap icons still take a plain click.)
+- World map "!" and "?" are no longer faded, so they're easy to see on any map. A "?" (ready to turn in) sits on a
+  dark round badge with a gold rim like the game's own markers; a "!" (quest to pick up) is just the yellow mark.
+- The "!" is coloured by the quest's level, like the quest log: green below your level, yellow around your level,
+  orange above it (grey when it no longer gives XP). A giver with several quests shows their easiest one that still
+  gives XP. On the world map and the minimap.
+- Tracker: zone names are blue, and the zone you're in moves to the top with its name a little bigger.
+- Quest areas: the shading is a little darker on the map and the minimap, and hovering it on the minimap or the map tells
+  you which quest it's for and what to do there (with your progress). The world map now shades every area the minimap
+  does, including ones inside towns and caves (some were missing).
+
 v1.9
 - Journal (the "Journal" button in the book, or /qb journal): written for you as you play - levels, quests handed in,
   new spells, boss kills and your first kill of each creature (with Pint's Tips), deaths (and what killed you, where

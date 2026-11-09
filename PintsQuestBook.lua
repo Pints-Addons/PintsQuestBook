@@ -418,6 +418,7 @@ NS.LocateMissedSet = function() locBudget.missed = true end
 -- for other Pint's add-ons (Pint's Alts points the arrow at trainers and book vendors)
 QB.Locate = function(...) return Locate(...) end
 QB.MapToWorld = function(...) return NS.MapToWorld(...) end
+-- (Pint's Book Hunt points the arrow at books)
 QB.ArrowTo = function(...) if NS.ArrowTo then return NS.ArrowTo(...) end end
 NS.Waypoint = function(...) return Waypoint(...) end
 

@@ -82,8 +82,10 @@ function NS.AreaPins(mapID)
         if Unfinished(q.index, o[1]) then
           for k = 2, #o, 3 do
             local _, mid, x, y = NS.Locate(o[k], o[k + 1], o[k + 2])
+            -- (a spot the game files under a city or another inner map still shows on the zone around it, and the reverse)
+            if mid and mid ~= mapID and NS.MapProject then x, y = NS.MapProject(mid, x, y, mapID); mid = x and mapID end
             if mid == mapID then
-              out[#out + 1] = { x = x / 100, y = y / 100, kind = "area", qid = qid, title = q.title, obj = o[1], r = r, g = g, b = b }
+              out[#out + 1] = { x = x / 100, y = y / 100, kind = "area", qid = qid, title = q.title, obj = o[1], index = q.index, r = r, g = g, b = b }
             end
           end
         end
