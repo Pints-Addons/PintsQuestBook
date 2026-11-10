@@ -12,6 +12,8 @@ v1.9.2
 - Shift-clicking a quest into chat makes a proper quest link again on WoW Forever (it came out as plain text): the
   game's own link where it gives one, and the quest's real level.
 - Party progress messages now say "Pint's Quest Book: 6/6 ..." (they said "Quest Book:").
+- Quest links in chat: clicking or hovering one adds where you stand with it - done, in your log, you can take it
+  now, too low (and the level it needs), or an earlier quest to do first - and who gives it.
 
 v1.9.1
 - Quest "!" and "?" now show on every level of the map: the world map, continents, zones, cities (a zone's map

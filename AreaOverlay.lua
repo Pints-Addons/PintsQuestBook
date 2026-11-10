@@ -13,7 +13,7 @@ local GetMouseFocus = GetMouseFocus or function() local t = GetMouseFoci and Get
 
 local function db() return NS.DB and NS.DB() end
 local R_YARDS = 42          -- radius of each spot (cells are ~45 yards apart, so neighbours merge)
-local MAP_ALPHA, MINI_ALPHA = 0.3, 0.2        -- (minimap: soft - the spots overlap and add up)
+local MAP_ALPHA, MINI_ALPHA = 0.45, 0.2       -- (minimap: soft - the spots overlap and add up)
 local DISC = "Interface\\CHARACTERFRAME\\TempPortraitAlphaMask"
 
 local function On()
@@ -169,6 +169,30 @@ local function Collect(cont)
   end
 end
 function NS.RefreshAreaSpots() spotsAt = nil end
+-- /qb areas: where the nearest quest-area spots are, worked out both ways (for checking the map against the minimap)
+function NS.AreaDebug()
+  local P = function(m) print("|cffd4a24cQuest Book areas:|r " .. m) end
+  local py, px, _, cont = UnitPosition("player")
+  if not py or (issecretvalue and (issecretvalue(py) or issecretvalue(px))) then P("the game won't give your position here."); return end
+  local mapID = C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+  local pos = mapID and C_Map.GetPlayerMapPosition and C_Map.GetPlayerMapPosition(mapID, "player")
+  local mx, my = pos and pos:GetXY()
+  P(("you: world %.0f, %.0f (cont %s)  map %s %.1f, %.1f  minimap radius %s yards"):format(py, px, tostring(cont), tostring(mapID), (mx or 0) * 100, (my or 0) * 100,
+    tostring(NS.MinimapRadius and math.floor(NS.MinimapRadius() + 0.5))))
+  Collect(cont); spotsAt = nil
+  local list = {}
+  for _, s in ipairs(spots) do
+    local dn, dw = s[1] - py, s[2] - px
+    list[#list + 1] = { s, math.sqrt(dn * dn + dw * dw), dn, dw }
+  end
+  table.sort(list, function(a, b) return a[2] < b[2] end)
+  for i = 1, math.min(4, #list) do
+    local s, d, dn, dw = list[i][1], list[i][2], list[i][3], list[i][4]
+    local zn, mid, x, y = NS.Locate(cont, s[1], s[2])
+    P(("%s - %s: %.0f yd away (%.0f north, %.0f west)  -> map %s %s %.1f, %.1f"):format(s.title or "?", s.obj or "?", d, dn, dw, tostring(mid), tostring(zn), x or -1, y or -1))
+  end
+  if #list == 0 then P("no quest areas on this continent.") end
+end
 
 local function MiniTex(i)
   local t = miniTex[i]

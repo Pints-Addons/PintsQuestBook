@@ -2442,6 +2442,63 @@ end
 function QB.Refresh() if win and win:IsShown() then Render() end
 end
 
+---------------------------------------------------------------- quest links: where you stand with that quest
+-- Click (or hover) a quest link in chat: one line saying whether you've done it, have it, can take it now, aren't
+-- high enough yet, or need an earlier quest first.
+local function LinkStatus(tt, link)
+  if type(link) ~= "string" or (type(issecretvalue) == "function" and issecretvalue(link)) then return end
+  local id = tonumber(link:match("quest:(%d+)"))
+  if not id then return end
+  local q = D and D.quests[id]
+  if not q then
+    -- a quest the book doesn't know yet (new in WoW Forever and not seen by any of your characters): what the game says
+    local lvl, qlvl = UnitLevel("player") or 1, tonumber(link:match("quest:%d+:(%-?%d+)"))
+    local done = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted and C_QuestLog.IsQuestFlaggedCompleted(id)) or (IsQuestFlaggedCompleted and IsQuestFlaggedCompleted(id))
+    local inLogNow = (C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetLogIndexForQuestID(id)) or (GetQuestLogIndexByID and GetQuestLogIndexByID(id))
+    local line, r, g, b
+    if done then line, r, g, b = "You've done this quest", 0.4, 1, 0.4
+    elseif inLogNow and inLogNow ~= 0 then line, r, g, b = "In your quest log", 0.4, 0.8, 1
+    elseif qlvl and qlvl > lvl + 4 then line, r, g, b = ("Not done - a level %d quest, likely too high for you yet (you're %d)"):format(qlvl, lvl), 1, 0.35, 0.35
+    elseif qlvl and qlvl > 0 then line, r, g, b = ("Not done yet - a level %d quest (you're %d)"):format(qlvl, lvl), 1, 0.82, 0
+    else line, r, g, b = "Not done yet", 1, 0.82, 0 end
+    tt:AddLine(" ")
+    tt:AddLine("Quest Book: " .. line, r, g, b, true)
+    tt:AddLine("(new to the book - it learns where it starts when you see it)", 0.6, 0.6, 0.6, true)
+    tt:Show()
+    return
+  end
+  local lvl = UnitLevel("player") or 1
+  local line, r, g, b, st
+  if not valid[id] and not IsDone(id) then
+    line, r, g, b = "Not for your faction or class", 0.6, 0.6, 0.6
+  else
+    st = Status(id)
+    if st == "done" then line, r, g, b = "You've done this quest", 0.4, 1, 0.4
+    elseif st == "ready" then line, r, g, b = "In your log - ready to turn in", 0.4, 1, 0.4
+    elseif st == "log" then line, r, g, b = "In your quest log", 0.4, 0.8, 1
+    elseif st == "later" then line, r, g, b = ("Too low - needs level %d (you're %d)"):format(q[3] or 0, lvl), 1, 0.35, 0.35
+    elseif st == "locked" then
+      local prev = q[7] and D.quests[q[7]]
+      line, r, g, b = "Not yet - do " .. (prev and ("\"" .. prev[1] .. "\"") or "the quest before it") .. " first", 1, 0.6, 0.2
+    elseif st == "event" then line, r, g, b = "Holiday quest - only during its event", 1, 0.6, 0.2
+    elseif st == "available" then
+      if IsTrivial(q[2], id) then line, r, g, b = "You can take it (low level for you - little XP)", 0.6, 0.6, 0.6
+      else line, r, g, b = "You can take this quest now", 1, 0.82, 0 end
+    end
+  end
+  if not line then return end
+  tt:AddLine(" ")
+  tt:AddLine("Quest Book: " .. line, r, g, b, true)
+  if st ~= "done" and q[13] and q[13] > 0 and D.names[q[13]] then
+    local zn = q[18] and q[18] >= 0 and Locate(q[18], q[19], q[20])
+    tt:AddLine("From " .. D.names[q[13]] .. (zn and (", " .. zn) or ""), 0.8, 0.8, 0.8, true)
+  end
+  tt:Show()
+end
+for _, tt in ipairs({ ItemRefTooltip, GameTooltip }) do
+  if tt and tt.SetHyperlink then hooksecurefunc(tt, "SetHyperlink", function(self, link) pcall(LinkStatus, self, link) end) end
+end
+
 SLASH_PINTSQUESTBOOK1 = "/qb"
 SLASH_PINTSQUESTBOOK2 = "/questbook"
 SlashCmdList.PINTSQUESTBOOK = function(msg)
@@ -2455,6 +2512,7 @@ SlashCmdList.PINTSQUESTBOOK = function(msg)
     db.hidden = {}; BuildIndex(); QB.Refresh()
     print(("|cffd4a24cQuest Book|r: %d hidden quest%s restored."):format(n, n == 1 and "" or "s")); return
   end
+  if msg == "areas" then if NS.AreaDebug then NS.AreaDebug() end; return end
   if msg:match("^rec") then if NS.RecorderCmd then NS.RecorderCmd(msg:match("^rec%a*%s*(.*)$")) end; return end
   if msg == "options" then if NS.ToggleOptions then NS.ToggleOptions() end; return end
   if msg:match("^born") then QB.SetBorn(msg:match("^born%s+(.+)$")); return end
