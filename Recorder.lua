@@ -296,28 +296,47 @@ end
 local function OnGiverOpen()
 	local who = Giver()
 	local d = D()
-	if not (who and d and NS.Status) then return end
+	-- WoW Forever often hides the NPC's name from add-ons: then the giver is whoever the book places right where
+	-- you're standing (within a few yards)
+	local okH, inst, hy, hx = pcall(Here)
+	if not okH then inst, hy, hx = nil, nil, nil end
+	if not (d and NS.Status) or (not who and not hy) then return end
+	local function Secret(v) return type(issecretvalue) == "function" and issecretvalue(v) end
+	local unknown = false
 	local offered, titles = {}, {}
 	if C_GossipInfo and C_GossipInfo.GetAvailableQuests then
 		local ok, list = pcall(C_GossipInfo.GetAvailableQuests)
 		if ok and type(list) == "table" then
-			for _, q in ipairs(list) do if q.questID then offered[q.questID] = true end; if q.title then titles[q.title] = true end end
+			for _, q in ipairs(list) do
+				local qid, t = q.questID, q.title
+				if Secret(qid) or Secret(t) then unknown = true
+				else if qid then offered[qid] = true end; if t then titles[t] = true end end
+			end
 		end
 	end
 	if GetNumAvailableQuests and GetAvailableTitle then
-		for i = 1, GetNumAvailableQuests() or 0 do local t = GetAvailableTitle(i); if t then titles[t] = true end end
+		for i = 1, GetNumAvailableQuests() or 0 do local t = GetAvailableTitle(i); if Secret(t) then unknown = true elseif t then titles[t] = true end end
 	end
+	if unknown then return end      -- (the game hid what they offer: can't tell what's missing)
 	local idx
-	for i, n in ipairs(d.names) do if n == who then idx = i; break end end
-	if not idx then return end
+	if who then for i, n in ipairs(d.names) do if n == who then idx = i; break end end end
+	if who and not idx then return end
+	local function Mine(q)
+		if idx then return q[13] == idx end
+		return q[18] == inst and q[19] and q[20] and math.abs(q[19] - hy) < 10 and math.abs(q[20] - hx) < 10
+	end
 	local changed = false
 	for id, q in pairs(d.quests) do
-		if q[13] == idx and not offered[id] and not titles[q[1]] and NS.Status(id) == "available" and not (NS.IsTrivial and NS.IsTrivial(q[2])) then
+		if Mine(q) and not offered[id] and not titles[q[1]] and NS.Status(id) == "available" and not (NS.IsTrivial and NS.IsTrivial(q[2])) then
 			local r = rec.quests[id] or {}
 			if not r.notHere then r.notHere = true; rec.quests[id] = r; q.notHere = true; changed = true end
 		end
 	end
-	if changed and NS.Rebuild then NS.Rebuild() end
+	if changed then
+		if NS.Rebuild then NS.Rebuild() end
+		if NS.RefreshMap then NS.RefreshMap() end
+		if NS.RefreshMinimap then NS.RefreshMinimap(true) end
+	end
 end
 
 -- everything already in your log (level, title, zone)
@@ -349,12 +368,34 @@ ev:SetScript("OnEvent", function(_, e, a1, a2, a3)
 	elseif e == "GOSSIP_SHOW" or e == "QUEST_GREETING" then C_Timer.After(0.1, OnGiverOpen) end
 end)
 
+-- you've found a quest isn't offered (from the map): it comes off the map, for all your characters. Undone the moment the
+-- game offers it to you after all.
+function NS.MarkNotHere(id, off)
+	if not (rec and id) then return end
+	local r = rec.quests[id] or {}
+	r.notHere = (off ~= false) and true or nil
+	rec.quests[id] = r
+	local q = D() and D().quests[id]
+	if q then q.notHere = r.notHere end
+end
+function NS.ClearNotHere()
+	local n = 0
+	for id, r in pairs(rec and rec.quests or {}) do
+		if r.notHere then r.notHere = nil; n = n + 1; local q = D() and D().quests[id]; if q then q.notHere = nil end end
+	end
+	return n
+end
+
 ---------------------------------------------------------------- /qb rec
 function NS.RecorderCmd(arg)
 	arg = (arg or ""):lower()
 	if not rec then Say("the recorder starts once you've logged in."); return end
 	if arg == "off" then rec.off = true; Say("recorder paused. /qb rec on to start it again."); return end
 	if arg == "on" then rec.off = nil; Say("recorder on."); return end
+	if arg == "unhide" then
+		local n = NS.ClearNotHere(); Say(("%d quest%s marked \"not offered\" put back on the map."):format(n, n == 1 and "" or "s"))
+		if NS.Rebuild then NS.Rebuild() end; if NS.RefreshMap then NS.RefreshMap() end; return
+	end
 	if arg == "quiet" then rec.announce = (rec.announce == false) and true or false
 		Say(rec.announce and "will say when it adds a quest the book didn't have." or "won't announce new quests any more."); return end
 	local total, new, withEnd, zones = 0, 0, 0, 0
@@ -368,5 +409,5 @@ function NS.RecorderCmd(arg)
 	for _ in pairs(rec.zones or {}) do zones = zones + 1 end
 	Say(("recorder %s - %d quests checked in game (%d the book didn't have, %d with their turn-in), %d new zone%s.")
 		:format(rec.off and "|cffff6060paused|r" or "|cff60ff60on|r", total, new, withEnd, zones, zones == 1 and "" or "s"))
-	Say("/qb rec off - pause    /qb rec on - resume    /qb rec quiet - stop announcing new quests")
+	Say("/qb rec off - pause    /qb rec on - resume    /qb rec quiet - stop announcing new quests    /qb rec unhide - put back quests you marked \"not offered\"")
 end

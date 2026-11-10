@@ -52,6 +52,7 @@ end
 local function Link(id, index)
   local t = Title(id, index)
   if not t then return "a quest" end
+  if NS.QuestLink then local l = NS.QuestLink(id, t); if l then return l end end
   local D = NS.Data and NS.Data(); local q = D and D.quests[id]
   return ("|cffffff00|Hquest:%d:%d|h[%s]|h|r"):format(id, (q and q[2]) or 0, t)
 end
@@ -87,8 +88,8 @@ local function Scan(quiet)
           if up and (d.announceEvery or o[4]) then
             local what = Clean(o[1])
             local msg
-            if o[2] and o[3] then msg = ("Quest Book: %d/%d %s for %s!"):format(o[2], o[3], what, Link(id, index))
-            else msg = ("Quest Book: %s for %s - done!"):format(what ~= "" and what or "Objective", Link(id, index)) end
+            if o[2] and o[3] then msg = ("Pint's Quest Book: %d/%d %s for %s!"):format(o[2], o[3], what, Link(id, index))
+            else msg = ("Pint's Quest Book: %s for %s - done!"):format(what ~= "" and what or "Objective", Link(id, index)) end
             pcall(SendChatMessage, msg, Channel())
           end
         end

@@ -1,5 +1,18 @@
 Pint's Quest Book - Changelog
 
+v1.9.2
+- Share in a fight now says you can't (the game blocks it) instead of causing an error.
+- WoW Forever: minimap icons and quest-area shading stay pinned to their spot as you move (they drifted - the
+  minimap there covers a different distance than Classic's; the game now says how far).
+- WoW Forever: fewer wrong "!" from Classic's quest list - a quest not yet seen in game that's more than 4 levels above
+  you stays off the map until you're closer. Right-click a "!" on the minimap (Ctrl-right-click on the world map) to
+  mark its quests "not offered here" - off the map for all your characters; /qb rec unhide puts them back. Talking to a
+  giver clears out quests they don't offer - now on WoW Forever too, where the game often hides the NPC's name (the
+  giver is matched by where you're standing), and the map updates straight away.
+- Shift-clicking a quest into chat makes a proper quest link again on WoW Forever (it came out as plain text): the
+  game's own link where it gives one, and the quest's real level.
+- Party progress messages now say "Pint's Quest Book: 6/6 ..." (they said "Quest Book:").
+
 v1.9.1
 - Quest "!" and "?" now show on every level of the map: the world map, continents, zones, cities (a zone's map
   now shows the givers in its city too, e.g. Orgrimmar's on Durotar), and caves or inner maps.

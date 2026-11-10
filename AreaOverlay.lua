@@ -207,9 +207,7 @@ local function DrawMini()
   local d = db()
   if px and On() and d.map.minimap then
     if not spotsAt or spotsAt ~= cont then Collect(cont); spotsAt = cont end
-    local zoom = Minimap:GetZoom()
-    local indoor = ((tonumber(GetCVar("minimapZoom")) or -1) == zoom or not IsIndoors or not IsIndoors()) and "outdoor" or "indoor"
-    local radius = (MINI_YARDS[indoor][zoom] or 266) / 2
+    local radius = NS.MinimapRadius and NS.MinimapRadius() or 133
     local half = Minimap:GetWidth() / 2
     local rot = GetCVar("rotateMinimap") == "1" and GetPlayerFacing and (GetPlayerFacing() or 0) or nil
     if rot and issecretvalue and issecretvalue(rot) then rot = nil end

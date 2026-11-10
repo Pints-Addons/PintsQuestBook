@@ -145,6 +145,9 @@ local FOREVER = type(issecretvalue) == "function"
 local function PinOK(q, m)
   if q.notHere then return false end
   if FOREVER and not q.checked and not m.qunverified then return false end
+  -- WoW Forever raised many quests' levels: a quest nobody has seen in game yet that's more than 4 levels above you is
+  -- left off until you're closer to it (the Classic list says you could take it, Forever usually won't yet)
+  if FOREVER and not q.checked and (q[2] or 0) > (UnitLevel("player") or 0) + 4 then return false end
   return true
 end
 -- a zone's place on a continent map (for the continent view), worked out once per zone
@@ -353,6 +356,7 @@ function PintsStorybookPinMixin:OnMouseEnter()
     end
     if p.unv then GameTooltip:AddLine("From Classic's quest list - WoW Forever may have moved or changed this.", 0.6, 0.6, 0.6, true) end
     GameTooltip:AddLine(C .. "click: open in the Quest Book   " .. C .. "Shift-click: arrow", 0.5, 0.5, 0.5)
+    if p.kind == "qavail" then GameTooltip:AddLine(C .. "right-click: not offered here - take it off the map", 0.5, 0.5, 0.5) end
   else
     local i = p.info
     GameTooltip:AddLine(i.name, 1, 0.82, 0)
@@ -385,6 +389,16 @@ function PintsStorybookPinMixin:OnClick(button)
   local p = self.p
   if not p then return end
   if self:GetParent() ~= Minimap and not IsControlKeyDown() then return end
+  -- right-click a "!": the giver doesn't offer these here - off the map (for every character; /qb rec unhide puts them back)
+  if button == "RightButton" and p.kind == "qavail" and p.quests and NS.MarkNotHere then
+    for _, id in ipairs(p.quests) do NS.MarkNotHere(id) end
+    print(("|cffd4a24cQuest Book|r: %s - %d quest%s marked not offered here. (/qb rec unhide to undo)"):format(p.who or "giver", #p.quests, #p.quests == 1 and "" or "s"))
+    GameTooltip:Hide()
+    if NS.Rebuild then NS.Rebuild() end
+    if NS.RefreshMap then NS.RefreshMap() end
+    if NS.RefreshMinimap then NS.RefreshMinimap(true) end
+    return
+  end
   if p.kind == "area" then
     if PintsQuestBook and PintsQuestBook.OpenQuest then PintsQuestBook.OpenQuest(p.qid) end
     return
@@ -648,6 +662,19 @@ end)
 -- so no map conversion is needed. Icons beyond the minimap's edge are hidden.
 local MINI_YARDS = { outdoor = { [0] = 466 + 2 / 3, 400, 333 + 1 / 3, 266 + 2 / 3, 200, 133 + 1 / 3 },
                      indoor  = { [0] = 300, 240, 180, 120, 80, 50 } }
+-- how many yards from the middle of the minimap to its edge right now. The game says so itself on the modern client
+-- (WoW Forever) - its minimap covers a different distance than Classic's, which made the icons drift as you moved;
+-- otherwise from the Classic table (and whether you're indoors)
+function NS.MinimapRadius()
+  if C_Minimap and C_Minimap.GetViewRadius then
+    local ok, r = pcall(C_Minimap.GetViewRadius)
+    if ok and type(r) == "number" and not (type(issecretvalue) == "function" and issecretvalue(r)) and r > 0 then return r end
+  end
+  local zoom = Minimap:GetZoom()
+  -- the minimap keeps separate zoom levels indoors and outdoors; whichever matches the current zoom tells us where we are
+  local indoor = ((tonumber(GetCVar("minimapZoom")) or -1) == zoom or not IsIndoors or not IsIndoors()) and "outdoor" or "indoor"
+  return (MINI_YARDS[indoor][zoom] or 266) / 2
+end
 local miniPins, near, nearAt = {}, {}, nil
 local function MiniPin(i)
   local b = miniPins[i]
@@ -663,7 +690,7 @@ local function MiniPin(i)
     PintsStorybookPinMixin.OnMouseEnter(self)
   end)
   b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  b:SetScript("OnMouseUp", function(self) PintsStorybookPinMixin.OnClick(self) end)
+  b:SetScript("OnMouseUp", function(self, button) PintsStorybookPinMixin.OnClick(self, button) end)
   miniPins[i] = b
   return b
 end
@@ -732,10 +759,7 @@ local function Draw()
   if not nearAt or nearAt[3] ~= cont or math.abs(nearAt[1] - px) > 400 or math.abs(nearAt[2] - py) > 400 then
     Gather(cont, px, py); nearAt = { px, py, cont }
   end
-  local zoom = Minimap:GetZoom()
-  -- the minimap keeps separate zoom levels indoors and outdoors; whichever matches the current zoom tells us where we are
-  local indoor = ((tonumber(GetCVar("minimapZoom")) or -1) == zoom or not IsIndoors or not IsIndoors()) and "outdoor" or "indoor"
-  local radius = (MINI_YARDS[indoor][zoom] or 266) / 2
+  local radius = NS.MinimapRadius()
   local half = Minimap:GetWidth() / 2
   local rot = GetCVar("rotateMinimap") == "1" and GetPlayerFacing and (GetPlayerFacing() or 0) or nil
   local cs, sn = rot and math.cos(rot) or 1, rot and math.sin(rot) or 0

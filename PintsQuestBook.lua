@@ -60,15 +60,31 @@ local function band(a, b)
 end
 local function MyFaction() return (UnitFactionGroup("player") == "Horde") and 1 or 2 end
 local function Q(id) return D and D.quests[id] end
+-- a quest's chat link. The game's own when it will make one (a quest in your log): WoW Forever drops a hand-made link
+-- it doesn't like when you send it, leaving just the plain name; otherwise one built the way Classic writes them.
+function NS.QuestLink(id, title)
+  local function ok(l) return type(l) == "string" and not (type(issecretvalue) == "function" and issecretvalue(l)) and l:find("|Hquest:", 1, true) and l end
+  if GetQuestLink then
+    local idx = GetQuestLogIndexByID and GetQuestLogIndexByID(id)
+    if idx and idx > 0 then local g, l = pcall(GetQuestLink, idx); if g and ok(l) then return l end end
+    local g, l = pcall(GetQuestLink, id)                 -- (the modern client takes the quest's number)
+    if g and ok(l) then return l end
+  end
+  if C_QuestLog and C_QuestLog.GetQuestLink then local g, l = pcall(C_QuestLog.GetQuestLink, id); if g and ok(l) then return l end end
+  local q = Q(id)
+  title = title or (C_QuestLog and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(id)) or (q and q[1])
+  if not title then return nil end
+  local level = (q and q[2] and q[2] > 0) and q[2] or UnitLevel("player")   -- (the quest's own level, not the level to take it)
+  return ("|cffffff00|Hquest:%d:%d|h[%s]|h|r"):format(id, level, title)
+end
 -- Shift-click a quest: its link goes into the chat box (opening one if none is open)
 function QB.LinkQuest(id)
   if not id or id <= 0 then return end
-  local q = Q(id)
-  local title = (C_QuestLog and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(id)) or (q and q[1])
-  if not title then return end
-  local level = (q and q[3]) or 0
-  local link = ("|cffffff00|Hquest:%d:%d|h[%s]|h|r"):format(id, level, title)
-  if not (ChatEdit_InsertLink and ChatEdit_InsertLink(link)) and ChatFrame_OpenChat then ChatFrame_OpenChat(link) end
+  local link = NS.QuestLink(id)
+  if not link then return end
+  local insert = ChatEdit_InsertLink or (ChatFrameUtil and ChatFrameUtil.InsertLink)
+  local open = ChatFrame_OpenChat or (ChatFrameUtil and ChatFrameUtil.OpenChat)
+  if not (insert and insert(link)) and open then open(link) end
   return true
 end
 local function ZoneOf(q) local z = q[4]; return NS.REMAP[z] or z end
@@ -2313,6 +2329,8 @@ local function SelectedLogIndex()
 end
 function QB.ShareSelected()
   local li = SelectedLogIndex(); if not li then return end
+  -- (the game only lets you share quests out of a fight - in one it blocks the add-on)
+  if InCombatLockdown() then UIErrorsFrame:AddMessage("You can't share a quest in combat.", 1, 0.3, 0.3); return end
   SelectQuestLogEntry(li)
   if GetQuestLogPushable and GetQuestLogPushable() and QuestLogPushQuest then QuestLogPushQuest()
     print(("|cffd4a24cQuest Book|r: shared \"%s\" with your party."):format(GetQuestLogTitle(li) or "quest"))
