@@ -273,7 +273,23 @@ local function Build()
   T.grip:SetScript("OnLeave", function() GameTooltip:Hide() end)
   T:EnableMouseWheel(true)
   T:SetScript("OnMouseWheel", function(_, delta) offset = math.max(0, offset - delta * 3); NS.RefreshTracker() end)
-  T.title = T:CreateFontString(nil, "OVERLAY", "GameFontNormal"); T.title:SetPoint("TOPLEFT", 6, -5); NS.Outline(T.title)
+  -- + / - beside the title: open every zone, or fold them all away
+  T.all = CreateFrame("Button", nil, T); T.all:SetSize(14, 14); T.all:SetPoint("TOPLEFT", 6, -5)
+  T.all.tex = T.all:CreateTexture(nil, "ARTWORK"); T.all.tex:SetAllPoints()
+  T.all:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight", "ADD")
+  T.all:SetScript("OnClick", function()
+    local dd = db(); dd.trackerZones = dd.trackerZones or {}
+    if T.anyFolded then wipe(dd.trackerZones)
+    else for _, z in ipairs(T.zones or {}) do dd.trackerZones[z] = true end end
+    NS.RefreshTracker()
+  end)
+  T.all:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+    GameTooltip:AddLine(T.anyFolded and "Open every zone" or "Fold every zone away")
+    GameTooltip:Show()
+  end)
+  T.all:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  T.title = T:CreateFontString(nil, "OVERLAY", "GameFontNormal"); T.title:SetPoint("LEFT", T.all, "RIGHT", 4, 0); NS.Outline(T.title)
   T.min = CreateFrame("Button", nil, T); T.min:SetSize(16, 16); T.min:SetPoint("TOPRIGHT", -4, -3)
   T.min.tex = T.min:CreateTexture(nil, "ARTWORK"); T.min.tex:SetAllPoints()
   T.min:SetScript("OnClick", function() local dd = db(); dd.trackerMin = not dd.trackerMin; NS.RefreshTracker() end)
@@ -458,12 +474,14 @@ function NS.RefreshTracker()
   n = n or 0
   -- every quest in the log counts toward the total, even in zones folded away here or in the game's quest log
   local count, total, zone = 0, 0, nil
+  local zones, anyFolded = {}, false
   for i = 1, n do
     local title, level, _, isHeader, _, isComplete, _, qid = GetQuestLogTitle(i)
     if not isHeader and title then total = total + 1 end
     if isHeader then
       zone = title
       rows[#rows + 1] = { header = title }
+      if title then zones[#zones + 1] = title; if d.trackerZones and d.trackerZones[title] then anyFolded = true end end
     elseif title and not (d.trackerZones and zone and d.trackerZones[zone]) then
       count = count + 1
       local r, g, b = DiffColor(level, qid)
@@ -499,6 +517,26 @@ function NS.RefreshTracker()
       end
     end
   end
+  -- the game's log can list one zone twice (WoW Forever: a dungeon's quests under two headers of the same name):
+  -- one header here, with all of them under it
+  do
+    local order, blocks, lead = {}, {}, {}
+    local cur = lead
+    for _, row in ipairs(rows) do
+      if row.header then
+        if not blocks[row.header] then blocks[row.header] = { row }; order[#order + 1] = row.header end
+        cur = blocks[row.header]
+      else
+        cur[#cur + 1] = row
+      end
+    end
+    local merged = lead
+    for _, h in ipairs(order) do for _, row in ipairs(blocks[h]) do merged[#merged + 1] = row end end
+    rows = merged
+    local seenZ, z2 = {}, {}
+    for _, z in ipairs(zones) do if not seenZ[z] then seenZ[z] = true; z2[#z2 + 1] = z end end
+    zones = z2
+  end
   -- the zone you're in goes to the top (its header and everything under it)
   local here = GetRealZoneText and GetRealZoneText()
   local here2 = GetZoneText and GetZoneText()
@@ -521,6 +559,8 @@ function NS.RefreshTracker()
   -- drop zone headers that ended up with nothing under them (except collapsed ones, which stay clickable)
   if type(numQuests) == "number" and numQuests > total then total = numQuests end
   T.title:SetText(("Quests  |cffd0d0d0%d/%d|r"):format(total, MAX_QUESTLOG_QUESTS or 20))
+  T.zones, T.anyFolded = zones, anyFolded
+  T.all.tex:SetTexture(anyFolded and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
   T.min.tex:SetTexture(d.trackerMin and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
   for _, b in ipairs(btns) do b:Hide() end
   T.more:Hide()

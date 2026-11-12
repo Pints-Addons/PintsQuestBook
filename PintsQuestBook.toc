@@ -2,7 +2,7 @@
 ## Title: |cffd4a017Pint's|r Quest Book
 ## Notes: Every quest in a zone, opened like a storybook with your name on the cover - chains, XP for your level and rewards, a contents page with your completion, a quest tracker, auto accept/turn-in, map icons and objective areas, Achievements and Rare Spawns. /qb
 ## Author: Jake (Pint's Add-ons, built with Claude)
-## Version: 1.9.2
+## Version: 1.9.3
 ## X-Curse-Project-ID: 1779417
 ## X-License: GPL-3.0
 ## IconTexture: Interface\AddOns\PintsQuestBook\Icon

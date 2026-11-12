@@ -22,7 +22,7 @@ local GOLD = { 0.85, 0.66, 0.26 }
 local BLUE_INK = { 0.08, 0.22, 0.52 }
 local PLUM = { 0.40, 0.18, 0.42 }        -- ink for the later links of a chain
 local THEMED = { accent = {}, metal = {}, metalHi = {}, ribbon = {}, ribbonDark = {}, cover = {} }   -- textures tinted per character
-local W, H, PAGE_W = 1010, 690, 448
+local W, H, PAGE_W = 1100, 690, 448     -- (wide enough for the whole bottom bar)
 local PAGE_TOP = 72                  -- the hard cover stands well proud of the pages on every side
 local PAGE_H = H - PAGE_TOP - 74
 local MAX_SHEETS = 14
@@ -378,7 +378,9 @@ local function WarmLocate()
         self:SetScript("OnUpdate", nil)
         NS.locWarm = true
         if locBudget.missed and WorldMapFrame and WorldMapFrame:IsShown() and WorldMapFrame.RefreshAllDataProviders then
-          locBudget.missed = nil; WorldMapFrame:RefreshAllDataProviders()
+          -- (only our own pins: refreshing every provider from here spread add-on taint to the game's map pins, which
+          -- then weren't allowed to set themselves up)
+          locBudget.missed = nil; if NS.RefreshMap then NS.RefreshMap() end
         end
         return
       end
@@ -807,6 +809,7 @@ end
 
 ---------------------------------------------------------------- left page
 local Render, ShowDetail
+local RenderSearch, searchText      -- (the Find a quest box)
 local function ListRow(i)
   local r = listRows[i]
   if r then return r end
@@ -1036,6 +1039,54 @@ local function RenderLog()
   win.list:SetHeight(math.max(1, y))
   if win.listScroll.Update then win.listScroll.Update() end
   win.empty:SetText("Your pack is empty - no quests in your log."); win.empty:SetShown(n == 0)
+  ShowDetail(selected)
+end
+
+-- quests whose name has the words you typed in it (any zone; your faction and class), lowest level first
+function RenderSearch()
+  local found = {}
+  for id in pairs(valid) do
+    local q = D.quests[id]
+    if q and q[1] and q[1]:lower():find(searchText or "", 1, true) then found[#found + 1] = id end
+  end
+  table.sort(found, function(a, b)
+    local qa, qb = D.quests[a], D.quests[b]
+    if (qa[2] or 0) ~= (qb[2] or 0) then return (qa[2] or 0) < (qb[2] or 0) end
+    return qa[1] < qb[1]
+  end)
+  local MAX = 120
+  win.zoneCap:SetText("F"); win.zoneTitle:SetText("ound Tales")
+  win.chapter:SetText("~ Searching the Library ~")
+  win.zoneInfo:SetText(("%d quest%s with \"%s\" in the name%s"):format(#found, #found == 1 and "" or "s", searchText or "",
+    #found > MAX and ("  -  the first " .. MAX .. " shown") or ""))
+  win.zoneBar:SetWidth(1)
+  win.seal:Hide(); win.blizzLog:Hide()
+  for _, c in ipairs(win.checks) do c:Hide() end
+  win.pageL:SetText("~ * ~"); win.pageR:SetText("~ * ~")
+  local y = 0
+  for i = 1, math.min(#found, MAX) do
+    local id = found[i]
+    local q = D.quests[id]
+    local r = ListRow(i)
+    r.id, r.logIndex, r.inZone, r.header, r.future = id, nil, true, nil, nil
+    r.bg:SetColorTexture(0, 0, 0, 0); r.line:Hide(); r.tick:Hide(); r.accept:Hide()
+    r.title:SetFontObject(F_ROW)
+    PlaceRow(r, y, 10)
+    local st = Status(id)
+    r.lvl:SetText(Hex(LevelColor(q[2], id)) .. "[" .. ((q[2] or 0) > 0 and q[2] or "?") .. "]|r")
+    local col = (st == "done" and { 0.45, 0.42, 0.38 }) or ((st == "ready" or st == "available") and { 0.08, 0.42, 0.08 }) or (st == "log" and BLUE_INK) or { 0.48, 0.44, 0.40 }
+    r.title:SetText(Hex(col) .. q[1] .. "|r  " .. Hex(INK_FAINT) .. (ZoneName(ZoneOf(q)) or "") .. "|r")
+    local ic = STATUS_ICON[st]
+    if ic then r.icon:SetTexture(ic); r.icon:Show() else r.icon:Hide() end
+    r.party:SetText("")
+    r.sel:SetShown(selected == id); r.mark:SetShown(selected == id)
+    y = y + 22
+    r:Show()
+  end
+  for i = math.min(#found, MAX) + 1, #listRows do listRows[i]:Hide() end
+  win.list:SetHeight(math.max(1, y))
+  if win.listScroll.Update then win.listScroll.Update() end
+  win.empty:SetText("No quest by that name."); win.empty:SetShown(#found == 0)
   ShowDetail(selected)
 end
 
@@ -1276,6 +1327,7 @@ function Render()
   win.zoneBtn.text:SetText(ZoneName(curZone) .. (rtz ~= "" and ("  |cffa08050(" .. rtz .. ")|r") or ""))
   if toc then RenderContents(); return end
   if curView == "log" then RenderLog(); return end
+  if curView == "search" then RenderSearch(); return end
   for _, c in ipairs(win.checks) do c:Show() end
   win.blizzLog:Hide()
   if not selected then selectedLog = nil end
@@ -1841,13 +1893,37 @@ local function CreateWindow()
   win.hereBtn = here
   win.zoneBtn = DropButton(win, 230); win.zoneBtn:SetPoint("RIGHT", here, "LEFT", -8, 0)
   win.groupBtn = DropButton(win, 168); win.groupBtn:SetPoint("RIGHT", win.zoneBtn, "LEFT", -8, 0)
+  -- find a quest by name: every quest your faction and class can do, any zone (results on the left page)
+  local find = CreateFrame("EditBox", "PintsQuestBookSearch", win, "InputBoxTemplate")
+  find:SetSize(108, 20); find:SetAutoFocus(false); find:SetMaxLetters(40)
+  find:SetPoint("RIGHT", win.groupBtn, "LEFT", -12, 0)
+  find.ph = find:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); find.ph:SetPoint("LEFT", 2, 0); find.ph:SetText("Find a quest...")
+  local findWait
+  local function FindNow()
+    local t = (find:GetText() or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if #t >= 2 then
+      if curView ~= "search" then win.beforeSearch = curView end
+      searchText, curView = t:lower(), "search"
+    elseif curView == "search" then curView = win.beforeSearch or "zone"; searchText = nil end
+    Render()
+  end
+  find:SetScript("OnTextChanged", function(self)
+    self.ph:SetShown(self:GetText() == "" and not self:HasFocus())
+    if findWait then findWait:Cancel() end
+    findWait = C_Timer.NewTimer(0.3, FindNow)
+  end)
+  find:SetScript("OnEditFocusGained", function(self) self.ph:Hide() end)
+  find:SetScript("OnEditFocusLost", function(self) self.ph:SetShown(self:GetText() == "") end)
+  find:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
+  find:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+  win.find = find
   -- gold rule under the title band
   local rule = win:CreateTexture(nil, "ARTWORK"); rule:SetHeight(1); rule:SetPoint("TOPLEFT", 24, -54); rule:SetPoint("TOPRIGHT", -24, -54)
   rule:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.6)
   -- bottom bar on the cover: turn chapters, contents, current quests, map icons, options
   -- (map icon settings live in Options -> "Map icons...")
-  local prev = StoryButton(win, "<  Prev. chapter", 132); prev:SetPoint("BOTTOMLEFT", 26, 14)
-  local nxt = StoryButton(win, "Next chapter  >", 132); nxt:SetPoint("BOTTOMRIGHT", -26, 14)
+  local prev = StoryButton(win, "<  Prev. chapter", 126); prev:SetPoint("BOTTOMLEFT", 22, 14)
+  local nxt = StoryButton(win, "Next chapter  >", 126); nxt:SetPoint("BOTTOMRIGHT", -22, 14)
   win.prevBtn, win.nextBtn = prev, nxt
   local shut = StoryButton(win, "Close book", 96)
   local toc = StoryButton(win, "Contents", 90)
@@ -1874,7 +1950,7 @@ local function CreateWindow()
   win.jFlip = jFlip
   win.questBar, win.journalBar = { shut, toc, mine, deedsB, raresB, journalB, tasksB, opt }, { jShut, jPick, jFlip }
   local function Centre(mids)   -- centre a group of buttons between the chapter buttons
-    local gap, total = 8, 0
+    local gap, total = 6, 0
     for _, b in ipairs(mids) do total = total + b:GetWidth() end
     total = total + gap * (#mids - 1)
     local x = -total / 2

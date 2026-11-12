@@ -1,5 +1,14 @@
 Pint's Quest Book - Changelog
 
+v1.9.3
+- Tracker: a + / - beside "Quests" opens every zone or folds them all away.
+- Find a quest: type part of a quest's name in the box at the top of the book - every quest your faction and class
+  can do, in any zone, lowest level first, with its zone and where you are with it. Click one to read it.
+- The book is a little wider, so the buttons along the bottom no longer overlap.
+- Tracker: a zone the game lists twice (WoW Forever: Zul'Farrak) shows once, with all its quests under it.
+- WoW Forever: fixed an error that could stop the game's own map icons from showing after the book filled in quest
+  locations.
+
 v1.9.2
 - Share in a fight now says you can't (the game blocks it) instead of causing an error.
 - WoW Forever: minimap icons and quest-area shading stay pinned to their spot as you move (they drifted - the
