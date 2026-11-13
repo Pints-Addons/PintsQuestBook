@@ -1,5 +1,8 @@
 Pint's Quest Book - Changelog
 
+v1.9.4
+- The book closes when a fight starts (with its quest finder and journal), so it's never in the way.
+
 v1.9.3
 - Tracker: a + / - beside "Quests" opens every zone or folds them all away.
 - Find a quest: type part of a quest's name in the box at the top of the book - every quest your faction and class

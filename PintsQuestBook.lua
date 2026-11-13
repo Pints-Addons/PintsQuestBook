@@ -1870,6 +1870,14 @@ local function CreateWindow()
   win:EnableMouse(true); win:SetMovable(true); win:RegisterForDrag("LeftButton")
   win:SetScript("OnDragStart", win.StartMoving); win:SetScript("OnDragStop", win.StopMovingOrSizing)
   tinsert(UISpecialFrames, "PintsQuestBookFrame")
+  -- a fight starting closes the book (and its finder and journal), so it's never in the way
+  local fight = CreateFrame("Frame"); fight:RegisterEvent("PLAYER_REGEN_DISABLED")
+  fight:SetScript("OnEvent", function()
+    for _, n in ipairs({ "PintsQuestBookFrame", "PintsQuestBookFinder", "PintsQuestBookJournal", "PintsQuestBookMenu", "PintsQuestBookOptions" }) do
+      local f = _G[n]
+      if f and f:IsShown() then f:Hide() end
+    end
+  end)
   local icon = win:CreateTexture(nil, "ARTWORK"); icon:SetSize(30, 30); icon:SetPoint("TOPLEFT", 18, -16)
   icon:SetTexture("Interface\\Icons\\INV_Misc_Book_09"); icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
   local title = win:CreateFontString(nil, "OVERLAY"); title:SetFont("Fonts\\MORPHEUS.TTF", 24, ""); title:SetTextColor(1, 0.82, 0.35)
