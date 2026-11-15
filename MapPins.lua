@@ -144,10 +144,11 @@ end
 local FOREVER = type(issecretvalue) == "function"
 local function PinOK(q, m)
   if q.notHere then return false end
-  if FOREVER and not q.checked and not m.qunverified then return false end
+  local seen = q.checked or (q.wh and not q.whMoved)   -- (seen in game, or on Wowhead's Forever list with the same giver)
+  if FOREVER and not seen and not m.qunverified then return false end
   -- WoW Forever raised many quests' levels: a quest nobody has seen in game yet that's more than 4 levels above you is
   -- left off until you're closer to it (the Classic list says you could take it, Forever usually won't yet)
-  if FOREVER and not q.checked and (q[2] or 0) > (UnitLevel("player") or 0) + 4 then return false end
+  if FOREVER and not seen and (q[2] or 0) > (UnitLevel("player") or 0) + 4 then return false end
   return true
 end
 -- a zone's place on a continent map (for the continent view), worked out once per zone
@@ -227,7 +228,7 @@ local function QuestPins(mapID, m, continent)
     g.quests[#g.quests + 1] = id
     -- a giver with only grey (low-level) quests gets a grey "!"
     local q = D.quests[id]
-    if q.checked then g.unv = false end                -- (WoW Forever: faded until one of their quests is seen in game)
+    if q.checked or (q.wh and not q.whMoved) then g.unv = false end   -- (WoW Forever: faded until one of their quests is confirmed)
     AddBand(g, q)
     if kind ~= "qavail" or not NS.IsTrivial(q[2]) then g.low = false end
   end
@@ -350,7 +351,7 @@ function PintsStorybookPinMixin:OnMouseEnter()
     GameTooltip:AddLine(p.kind == "qturn" and "Ready to turn in:" or "Quests to pick up:", 0.6, 0.8, 1)
     for _, id in ipairs(p.quests) do
       local q = D.quests[id]
-      local note = (FOREVER and not q.checked) and "  |cff808080(not seen in game yet)|r" or ""
+      local note = (FOREVER and not q.checked and not (q.wh and not q.whMoved)) and "  |cff808080(not seen in game yet)|r" or ""
       if p.kind == "qavail" and NS.IsTrivial(q[2]) then GameTooltip:AddLine(("[%d] %s"):format(q[2] or 0, q[1]) .. note, 0.6, 0.6, 0.6)
       else GameTooltip:AddLine(("[%d] %s"):format(q[2] or 0, q[1]) .. note, 1, 1, 1) end
     end
@@ -738,7 +739,7 @@ local function Gather(cont, px, py)
       local g = groups[key]
       if not g then g = { kind = kind, quests = {}, who = who, map = map, wx = wx, wy = wy, unv = FOREVER }; groups[key] = g; near[#near + 1] = { wx, wy, g } end
       g.quests[#g.quests + 1] = id
-      if D.quests[id].checked then g.unv = false end
+      if D.quests[id].checked or (D.quests[id].wh and not D.quests[id].whMoved) then g.unv = false end
       if kind == "qavail" then g.low = (g.low ~= false) and NS.IsTrivial(D.quests[id][2]) or false end
       AddBand(g, D.quests[id])
     end

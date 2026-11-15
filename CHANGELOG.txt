@@ -1,5 +1,16 @@
 Pint's Quest Book - Changelog
 
+v1.9.5
+- WoW Forever: the quest list checked against Wowhead's WoW Forever database. 3,475 of the book's quests are on Forever
+  as they are, and 658 changed - Forever's levels, required levels and titles are used now, and a quest's page says
+  what changed (rewards, objectives, quest giver...). Map "!" for confirmed quests are no longer faded. 4 quests Forever
+  dropped are hidden, and 1,513 of Forever's own quests are in the book (Riverglades, Mount Hyjal, Zephras Isle,
+  Shen'dralas, the new dungeons, Crafting Writs, Camping...) - their quest givers show on the map once you've seen them.
+- The book really closes when a fight starts on WoW Forever (it also checks twice a second, since the game doesn't always
+  say a fight began - a pet or totem starting it), and its X and Close book buttons work in a fight.
+- Rare alerts on WoW Forever: the game no longer lets an add-on target by name, so clicking the banner puts
+  "/targetexact <rare>" in the chat box - press Enter to target it (this was showing an "action forbidden" error).
+
 v1.9.4
 - The book closes when a fight starts (with its quest finder and journal), so it's never in the way.
 

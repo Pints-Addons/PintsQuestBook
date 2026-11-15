@@ -185,6 +185,35 @@ local function ApplyZones()
 	end
 end
 
+-- Wowhead's WoW Forever quest list (WowheadQuests.lua): quests the book has that are on Forever, Forever's levels and
+-- titles where they changed, quests Forever dropped, and Forever's own quests (no giver positions - the recorder adds
+-- those when you see them in game). Applied before your recordings and the harvest, so those always win.
+local function ApplyWowhead()
+	local W, d = _G.PintsQuestWowhead, D()
+	if not (W and d and type(issecretvalue) == "function") then return end
+	for zid, z in pairs(W.zones or {}) do if not NS.ZONES[zid] then NS.ZONES[zid] = { z[1], z[2], z[3], z[4], z[5] } end end
+	for _, id in ipairs(W.ok or {}) do local q = d.quests[id]; if q then q.wh = "" end end
+	for id, f in pairs(W.fix or {}) do
+		local q = d.quests[id]
+		if q then
+			if f[1] then q[2] = f[1] end
+			if f[2] then q[3] = f[2] end
+			if f[3] then q[1] = f[3] end
+			if f[4] then q[5] = f[4] end
+			q.wh = f[5] or ""
+			if q.wh:find("quest_giver_changed", 1, true) then q.whMoved = true end
+		end
+	end
+	for _, id in ipairs(W.gone or {}) do local q = d.quests[id]; if q then q.notHere = true; q.whGone = true end end
+	for id, n in pairs(W.new or {}) do
+		if not d.quests[id] then
+			local q = { n[1], n[2], n[3], n[5], n[4], n[6], 0, 0, 0, "", "", "", 0, 0, "", 0, 0, -1, 0, 0, -1, 0, 0 }
+			q.isNew, q.wh, q.whNew = true, "", true
+			d.quests[id] = q
+		end
+	end
+end
+
 -- called by the book at login, before it builds its index
 function NS.ApplyRecorded()
 	local db = NS.DB and NS.DB()
@@ -193,6 +222,7 @@ function NS.ApplyRecorded()
 	rec = db.rec
 	rec.quests = rec.quests or {}
 	ApplyZones()
+	pcall(ApplyWowhead)
 	-- quests gathered in WoW Forever by Pint's Add-ons (HarvestData.lua), for the ones you haven't recorded yourself
 	local H = _G.PintsQuestHarvest
 	if H and H.quests and type(issecretvalue) == "function" then

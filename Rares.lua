@@ -316,11 +316,22 @@ local function Banner()
   local close = CreateFrame("Button", nil, banner, "UIPanelCloseButton"); close:SetSize(22, 22); close:SetPoint("TOPRIGHT", -2, -2)
   -- clicking the banner targets the rare: a secure macro button laid over it (its own frame, so the banner itself can
   -- still come and go during combat; the button is only set up, shown or hidden out of combat)
-  targetBtn = CreateFrame("Button", "PintsQuestBookRareTarget", UIParent, "SecureActionButtonTemplate")
+  local modern = type(issecretvalue) == "function"
+  targetBtn = CreateFrame("Button", "PintsQuestBookRareTarget", UIParent, (not modern) and "SecureActionButtonTemplate" or nil)
   targetBtn:SetSize(268, 46); targetBtn:SetPoint("TOP", UIParent, "TOP", -14, -154)
   targetBtn:SetFrameStrata("HIGH"); targetBtn:SetFrameLevel(banner:GetFrameLevel() + 5); targetBtn:Hide()
   targetBtn:RegisterForClicks("AnyUp", "AnyDown")
-  targetBtn:SetAttribute("type", "macro")
+  if modern then
+    -- (WoW Forever won't run an add-on's targeting macro: the click puts "/targetexact name" in the chat box - press Enter)
+    targetBtn:RegisterForClicks("AnyUp")
+    targetBtn:SetScript("OnClick", function()
+      local cmd = targetBtn.rareName and ("/targetexact " .. targetBtn.rareName)
+      if not cmd then return end
+      if ChatFrameUtil and ChatFrameUtil.OpenChat then ChatFrameUtil.OpenChat(cmd) elseif ChatFrame_OpenChat then ChatFrame_OpenChat(cmd) end
+    end)
+  else
+    targetBtn:SetAttribute("type", "macro")
+  end
   targetBtn:SetScript("OnEnter", function(self) if banner.id then GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); NS.RareTooltip(GameTooltip, banner.id); GameTooltip:Show() end end)
   targetBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
   banner:Hide()
@@ -343,7 +354,8 @@ local function Alert(id, unit)
   b.name:SetText("|cffff8020Rare:|r " .. r[1])
   local loot = r[8]
   local best = loot[1] and D.items[loot[1]]
-  b.sub:SetText("Level " .. LevelText(r) .. (best and ("  -  can drop |cff" .. (QUALITY[best[2]] or "ffffff") .. best[1] .. "|r") or "") .. (InCombatLockdown() and "" or "  -  click to target"))
+  b.sub:SetText("Level " .. LevelText(r) .. (best and ("  -  can drop |cff" .. (QUALITY[best[2]] or "ffffff") .. best[1] .. "|r") or "") .. ((type(issecretvalue) == "function") and "  -  click, then Enter, to target" or (InCombatLockdown() and "" or "  -  click to target")))
+  targetBtn.rareName = r[1]
   if not InCombatLockdown() then targetBtn:SetAttribute("macrotext", "/cleartarget\n/targetexact " .. r[1]); targetBtn:Show() end
   b.t = 0; b:Show()
   if PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then PlaySound(SOUNDKIT.RAID_WARNING, "Master") end

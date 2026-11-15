@@ -546,6 +546,15 @@ local STATUS_TEXT = { done = "Completed", ready = "Ready to turn in", log = "In 
   later = "Needs level %d", locked = "Finish the earlier step first" }
 
 ---------------------------------------------------------------- index (who belongs, chains)
+-- "On WoW Forever (Wowhead): rewards changed" and the like
+local WH_WHAT = { rewards_changed = "rewards", objectives_changed = "objectives", quest_giver_changed = "quest giver",
+  requirements_changed = "requirements", reworded = "text", renamed = "name", text_changed = "text" }
+function NS.WowheadNote(q)
+  if q.whNew then return "New on WoW Forever (Wowhead) - where it starts shows once you've seen it in game" end
+  local what, seen = {}, {}
+  for k in (q.wh or ""):gmatch("[%w_]+") do local w = WH_WHAT[k]; if w and not seen[w] then seen[w] = true; what[#what + 1] = w end end
+  return "On WoW Forever (Wowhead)" .. (#what > 0 and (" - changed: " .. table.concat(what, ", ")) or "")
+end
 local function BuildIndex()
   D = _G.PintsQuestData
   if not D then return end
@@ -653,7 +662,8 @@ function NS.QuestTooltip(tt, id)
   tt:AddLine(q[1], 1, 0.82, 0)
   tt:AddLine(("Level %s%s"):format(q[2] > 0 and q[2] or "?", (q[3] or 0) > 0 and ("   (requires " .. q[3] .. ")") or ""), 1, 1, 1)
   tt:AddLine(STATUS_TEXT[Status(id)]:format(q[3] or 0), 0.6, 0.8, 1)
-  if q.checked then tt:AddLine(q.isNew and "New - recorded in game" or "Checked in game", 0.4, 1, 0.4) end
+  if q.checked then tt:AddLine(q.isNew and "New - recorded in game" or "Checked in game", 0.4, 1, 0.4)
+  elseif q.wh then tt:AddLine(NS.WowheadNote(q), 0.4, 0.8, 1, true) end
   for _, w in ipairs({ { "Starts", q[13], q[18], q[19], q[20] }, { "Turn in", q[14], q[21], q[22], q[23] } }) do
     if Name(w[2]) then
       local zn, _, x, y = Locate(w[3], w[4], w[5])
@@ -1547,7 +1557,8 @@ function ShowDetail(id)
   text(STATUS_TEXT[st]:format(q[3] or 0), F_SMALL, st == "done" and { 0.05, 0.45, 0.05 } or INK_SOFT)
   local zone = ZoneName(ZoneOf(q))
   text(("|cff5a4020Zone:|r %s"):format(zone), F_SMALL, INK_SOFT, 6)
-  if q.checked then text(q.isNew and "|cff1a6a1aNew quest - recorded in game|r" or "|cff1a6a1aChecked in game|r", F_SMALL, INK_SOFT) end
+  if q.checked then text(q.isNew and "|cff1a6a1aNew quest - recorded in game|r" or "|cff1a6a1aChecked in game|r", F_SMALL, INK_SOFT)
+  elseif q.wh then text("|cff1a3a6a" .. NS.WowheadNote(q) .. "|r", F_SMALL, INK_SOFT) end
   place("Starts:", q[13], q[18], q[19], q[20])
   if not Name(q[14]) then
     local logDesc = li and GetQuestLogQuestText and GetQuestLogQuestText()
@@ -1871,12 +1882,27 @@ local function CreateWindow()
   win:SetScript("OnDragStart", win.StartMoving); win:SetScript("OnDragStop", win.StopMovingOrSizing)
   tinsert(UISpecialFrames, "PintsQuestBookFrame")
   -- a fight starting closes the book (and its finder and journal), so it's never in the way
-  local fight = CreateFrame("Frame"); fight:RegisterEvent("PLAYER_REGEN_DISABLED")
-  fight:SetScript("OnEvent", function()
+  local function CloseAll()
     for _, n in ipairs({ "PintsQuestBookFrame", "PintsQuestBookFinder", "PintsQuestBookJournal", "PintsQuestBookMenu", "PintsQuestBookOptions" }) do
       local f = _G[n]
       if f and f:IsShown() then f:Hide() end
     end
+  end
+  NS.CloseAllForFight = CloseAll
+  local fight = CreateFrame("Frame"); fight:RegisterEvent("PLAYER_REGEN_DISABLED")
+  fight:SetScript("OnEvent", CloseAll)
+  -- (and a check twice a second, in case the fight's start was missed - WoW Forever doesn't always send it, e.g. when a
+  -- pet or totem starts it: if you're in a fight you weren't in when you opened the book, it closes)
+  -- (a watcher of its own: the book's own OnShow / OnHide scripts are set further down)
+  local t, wasShown, openedInFight = 0, false, nil
+  fight:SetScript("OnUpdate", function(_, el)
+    t = t + el; if t < 0.5 then return end; t = 0
+    local inFight = UnitAffectingCombat("player") or InCombatLockdown()
+    local shown = win:IsShown()
+    if shown and not wasShown then openedInFight = inFight and true or nil end
+    wasShown = shown
+    if not shown then return end
+    if inFight and not openedInFight then CloseAll() elseif not inFight then openedInFight = nil end
   end)
   local icon = win:CreateTexture(nil, "ARTWORK"); icon:SetSize(30, 30); icon:SetPoint("TOPLEFT", 18, -16)
   icon:SetTexture("Interface\\Icons\\INV_Misc_Book_09"); icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
@@ -1896,6 +1922,8 @@ local function CreateWindow()
   win.crest = crestF:CreateTexture(nil, "ARTWORK", nil, 2); win.crest:SetSize(46, 46); win.crest:SetPoint("CENTER", 4, -3)
   title:SetText("Pints Storybook")
   local close = CreateFrame("Button", nil, win, "UIPanelCloseButton"); close:SetPoint("TOPRIGHT", -6, -6)
+  -- (the game's close button goes through its panel code, which won't act in a fight on WoW Forever: just hide it)
+  close:SetScript("OnClick", function() win:Hide() end)
   -- top bar (right-aligned, clear of the close button): continent, zone, current zone
   local here = StoryButton(win, "Current zone", 108); here:SetPoint("TOPRIGHT", -44, -18)
   win.hereBtn = here
@@ -2273,6 +2301,8 @@ local function CreateWindow()
   elseif si.SetFromScale then pcall(si.SetFromScale, si, 0.02, 1); pcall(si.SetToScale, si, 1, 1) end
   if si.SetSmoothing then si:SetSmoothing("OUT") end
   function win.CloseCover()
+    -- in a fight: straight off the screen (no closing-book animation in the way)
+    if UnitAffectingCombat("player") or InCombatLockdown() then win:Hide(); return end
     if cover:IsShown() or win.opening then return end
     ApplyTheme()
     cover:Show(); swingIn:Play()
