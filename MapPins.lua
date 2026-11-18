@@ -122,6 +122,17 @@ local function BuildTown()
   if wasMissed and NS.LocateMissedSet then NS.LocateMissedSet() end
 end
 
+-- the trainers who teach past Journeyman (the same list as Pint's Alts, checked against WoW Forever): their tier on the
+-- tooltip, as the game's own titles ("Master Tailor") don't say how far they go
+local TIER = {
+  ["Alchemy"] = { ["Ainethil"] = "Expert", ["Doctor Herbert Halsey"] = "Expert", ["Kylanna Windwhisper"] = "Artisan", ["Rogvar"] = "Artisan" },
+  ["Blacksmithing"] = { ["Bengus Deepforge"] = "Expert", ["Saru Steelfury"] = "Expert", ["Brikk Keencraft"] = "Artisan" },
+  ["Enchanting"] = { ["Hgarth"] = "Expert", ["Kitta Firewind"] = "Expert", ["Annora"] = "Artisan" },
+  ["Engineering"] = { ["Roxxik"] = "Expert", ["Springspindle Fizzlegear"] = "Expert", ["Buzzek Bracketswing"] = "Artisan" },
+  ["Leatherworking"] = { ["Telonis"] = "Expert", ["Una"] = "Expert", ["Caryssia Moonhunter"] = "Artisan", ["Drakk Stonehand"] = "Artisan", ["Hahrana Ironhide"] = "Artisan" },
+  ["Tailoring"] = { ["Georgio Bolero"] = "Expert", ["Josef Gregorian"] = "Expert", ["Daryl Stack"] = "Artisan", ["Timothy Worthington"] = "Artisan" },
+}
+local TIER_TOP = { Expert = 225, Artisan = 300 }
 -- the first enabled category for an NPC (decides its icon), or nil if nothing about it is wanted
 local function Wanted(info, m, fac, classID, profs)
   if info.fac ~= 0 and info.fac ~= fac then return end
@@ -363,7 +374,11 @@ function PintsStorybookPinMixin:OnMouseEnter()
     GameTooltip:AddLine(i.name, 1, 0.82, 0)
     if i.sub then GameTooltip:AddLine("<" .. i.sub .. ">", 0.8, 0.8, 0.8) end
     local labels = {}
-    for _, c in ipairs(i.cats) do labels[#labels + 1] = LABEL[c] or (c:sub(1, 2) == "p:" and (c:sub(3) .. " Trainer")) or c end
+    for _, c in ipairs(i.cats) do
+      local prof = c:sub(1, 2) == "p:" and c:sub(3)
+      local tier = prof and TIER[prof] and TIER[prof][i.name]
+      labels[#labels + 1] = LABEL[c] or (prof and (prof .. " Trainer" .. (tier and (" - " .. tier .. " (up to " .. TIER_TOP[tier] .. ")") or ""))) or c
+    end
     if i.cats[1] ~= "mail" then GameTooltip:AddLine(table.concat(labels, ", "), 1, 1, 1, true) end
     GameTooltip:AddLine(("%.1f, %.1f"):format(p.x * 100, p.y * 100), 0.6, 0.6, 0.6)
     if p.wx then GameTooltip:AddLine(C .. "click: point the arrow here", 0.5, 0.5, 0.5) end

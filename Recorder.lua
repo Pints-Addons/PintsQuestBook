@@ -212,6 +212,33 @@ local function ApplyWowhead()
 			d.quests[id] = q
 		end
 	end
+	-- Forever's own experience for each quest (in place of the Classic estimate from the level-60 money; XP you get
+	-- in game, recorded below, still wins)
+	for id, x in pairs(W.xp or {}) do local q = d.quests[id]; if q then q.fullXP = x end end
+	-- quest chains as WoW Forever has them (Wowhead's "Series" for the dungeon quests): the step before each one
+	for id, prev in pairs(W.chain or {}) do local q = d.quests[id]; if q then q[7] = prev end end
+	-- every quest's level, experience and rewards from Wowhead's quest lists (WowheadRewards.lua)
+	for id, w in pairs(W.rew or {}) do
+		local q = d.quests[id]
+		if q then
+			if w[1] > 0 then q[2] = w[1] end
+			if w[2] > 0 then q[3] = w[2] end
+			if w[3] > 0 then q.fullXP = w[3] end
+			q[9] = w[4]; q[11] = w[5]; q[10] = w[6]; q[12] = w[7]
+		end
+	end
+	-- the dungeon quests, checked one by one (WowheadDungeonQuests.lua): the step before each in its chain, levels and
+	-- who gives and takes it on Forever (a quest with no step before it keeps the one the book had)
+	for id, w in pairs(W.dq or {}) do
+		local q = d.quests[id]
+		if q then
+			if w[1] and w[1] > 0 then q[7] = w[1] end
+			if w[2] and w[2] > 0 then q[2] = w[2] end
+			if w[3] and w[3] > 0 then q[3] = w[3] end
+			if w[4] and w[4] ~= "" then q.from = w[4] end
+			if w[5] and w[5] ~= "" then q.to = w[5] end
+		end
+	end
 end
 
 -- called by the book at login, before it builds its index

@@ -299,6 +299,38 @@ local function Build()
   T.book:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:AddLine("Open the Quest Book"); GameTooltip:Show() end)
   T.book:SetScript("OnLeave", function() GameTooltip:Hide() end)
   T.more = T:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); NS.Outline(T.more)
+  -- Writs tab: work the route out again from where you stand (in the Quest Book button's place)
+  T.wref = CreateFrame("Button", nil, T); T.wref:SetSize(16, 16); T.wref:SetPoint("RIGHT", T.min, "LEFT", -4, 0)
+  T.wref:SetNormalTexture("Interface\\Buttons\\UI-RefreshButton"); T.wref:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+  T.wref:SetScript("OnClick", function() NS.RefreshTracker() end)
+  T.wref:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:AddLine("Refresh the route"); GameTooltip:AddLine("Works the order out again from where you stand, with what's in your bags now.", 1, 1, 1, true); GameTooltip:Show() end)
+  T.wref:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  T.wref:Hide()
+  -- the title stops short of the buttons (a long writ title was running under them)
+  T.title:SetPoint("RIGHT", T.book, "LEFT", -4, 0); T.title:SetJustifyH("LEFT"); T.title:SetWordWrap(false)
+  -- Quests / Writs tabs along the top edge (Writs only with Pint's Auctions on WoW Forever: its writ route draws here)
+  -- (the writ route scrolls inside the tracker's own height, with a scroll bar, so the tracker stays where it's pinned)
+  T.wscroll = CreateFrame("ScrollFrame", nil, T, "UIPanelScrollFrameTemplate")
+  T.wscroll:SetPoint("TOPLEFT", 0, -24); T.wscroll:SetPoint("BOTTOMRIGHT", -24, 8); T.wscroll:Hide()
+  T.writs = CreateFrame("Frame", nil, T.wscroll); T.writs:SetSize(WIDTH, 1)
+  T.wscroll:SetScrollChild(T.writs)
+  T.tabs = {}
+  for k, info in ipairs({ { "quests", "Quests" }, { "writs", "Writs" } }) do
+    local tb = CreateFrame("Button", nil, T, "BackdropTemplate")
+    tb:SetSize(64, 18)
+    tb:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" })
+    tb.key = info[1]
+    tb.fs = tb:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall"); tb.fs:SetPoint("CENTER", 0, 0); tb.fs:SetText(info[2]); NS.Outline(tb.fs)
+    tb.line = tb:CreateTexture(nil, "OVERLAY"); tb.line:SetColorTexture(1, 0.82, 0, 0.9); tb.line:SetHeight(2)
+    tb.line:SetPoint("BOTTOMLEFT", 2, 0); tb.line:SetPoint("BOTTOMRIGHT", -2, 0)
+    if k == 1 then tb:SetPoint("BOTTOMLEFT", T, "TOPLEFT", 0, 0) else tb:SetPoint("LEFT", T.tabs[k - 1], "RIGHT", 2, 0) end
+    tb:SetScript("OnClick", function(self) local dd = db(); dd.trackerTab = self.key; offset = 0; NS.RefreshTracker() end)
+    tb:RegisterForDrag("LeftButton")
+    tb:SetScript("OnDragStart", function() T:GetScript("OnDragStart")(T) end)
+    tb:SetScript("OnDragStop", function() T:GetScript("OnDragStop")(T) end)
+    tb:Hide()
+    T.tabs[k] = tb
+  end
 end
 
 -- hide or restore Blizzard's quest watch list
@@ -367,6 +399,9 @@ local function QuestItems()
     end
   end
   if #want == 0 then return out end
+  -- items the game itself names for a quest stay on that quest only (Sign of the Earth showed on two)
+  local given = {}
+  for _, it in pairs(out) do given[it.id] = true end
   -- usable quest items in your bags
   local GetInfo = C_Container and C_Container.GetContainerItemInfo
   local NumSlots = (C_Container and C_Container.GetContainerNumSlots) or GetContainerNumSlots
@@ -375,18 +410,21 @@ local function QuestItems()
     for slot = 1, (NumSlots and NumSlots(bag) or 0) do
       local id
       if GetInfo then local info = GetInfo(bag, slot); id = info and info.itemID else id = GetContainerItemID and GetContainerItemID(bag, slot) end
-      if id and not seen[id] then
+      if id and not seen[id] and not given[id] then
         seen[id] = true
         local _, _, _, _, icon, classID = GetItemInfoInstant(id)
         if classID == 12 and GetItemSpell and GetItemSpell(id) then
           local name = (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)) or (GetItemInfo and GetItemInfo(id))
-          local iw = Words((name or "") .. " " .. UseText(bag, slot))
+          -- a word from the item's name counts 2, one only in its "Use:" text 1; it needs 2 to belong to a quest
+          -- (one shared word like "crystal" put an item on quests it had nothing to do with)
+          local nw = Words(name or "")
+          local uw = Words(UseText(bag, slot))
           local best, bestN
           for _, q in ipairs(want) do
             if not out[q[1]] then
               local n = 0
-              for w in pairs(q[2]) do if iw[w] then n = n + 1 end end
-              if n > 0 and (not bestN or n > bestN) then best, bestN = q[1], n end
+              for w in pairs(q[2]) do if nw[w] then n = n + 2 elseif uw[w] then n = n + 1 end end
+              if n >= 2 and (not bestN or n > bestN) then best, bestN = q[1], n end
             end
           end
           if best then out[best] = { id = id, icon = icon } end
@@ -437,9 +475,12 @@ local function PlaceItems(lineFor)
     -- as tall as the quest's name and the objective line under it (just the name when there's no objective shown)
     local h = it.tall and LINE_H * 2 or LINE_H + 4
     b:SetSize(h, h)
-    local l, t = line:GetLeft(), line:GetTop()
+    -- where the line is, worked out from the tracker's corner and the line's place in the list (asking the line itself
+    -- gave where it was before this redraw, so after the list changed the icons sat a line or more off)
+    local l, t = T:GetLeft(), T:GetTop()
+    if l and t then l, t = l + 6, t + it.y end
     if l and t then
-      local k = line:GetEffectiveScale() / UIParent:GetEffectiveScale()
+      local k = T:GetEffectiveScale() / UIParent:GetEffectiveScale()
       b:ClearAllPoints(); b:SetPoint("TOPRIGHT", UIParent, "BOTTOMLEFT", l * k - 6, t * k + (it.tall and 0 or 2))
       if GetItemCooldown then
         local ok, st, dur = pcall(GetItemCooldown, it.id)
@@ -465,6 +506,28 @@ function NS.RefreshTracker()
   if not T then Build() end
   BlizzTracker(d.hideBlizzTracker)
   T:Show()
+  -- Pint's Auctions' writ route lives on the Writs tab (its "Track it" button and /pah route open that tab)
+  local WR = PintsWritRoute
+  if WR and not T.docked then
+    T.docked = true
+    WR.Dock({
+      Changed = function() local dd = db(); if dd and dd.tracker and dd.trackerTab == "writs" then NS.RefreshTracker() end end,
+      Show = function(on)
+        local dd = db(); if not dd then return end
+        if on == nil then on = not (dd.tracker and dd.trackerTab == "writs") end
+        if on then dd.tracker = true; dd.trackerTab = "writs"; dd.trackerMin = nil else dd.trackerTab = "quests" end
+        NS.RefreshTracker()
+      end,
+    })
+  end
+  local writTab = WR and d.trackerTab == "writs"
+  for _, tb in ipairs(T.tabs) do
+    tb:SetShown(WR and true or false)
+    local on = (tb.key == "writs") == (writTab and true or false)
+    tb:SetBackdropColor(0, 0, 0, on and 0.7 or 0.35)
+    tb.fs:SetTextColor(on and 1 or 0.6, on and 0.82 or 0.6, on and 0 or 0.6)
+    tb.line:SetShown(on)
+  end
   local D = NS.Data and NS.Data()
   local rows = {}
   local qItems = (d.trackerItems ~= false) and QuestItems() or {}
@@ -567,6 +630,30 @@ function NS.RefreshTracker()
   if (T.sizing or d.trackerMin) and not InCombatLockdown() then for _, ib in ipairs(itemBtns) do ib:Hide() end end
   if T.sizing then return end
   T.grip:SetShown(not d.trackerLocked and not d.trackerMin)
+  T.all:SetShown(not writTab)
+  T.book:SetShown(not writTab)     -- (the Quest Book button only on the Quests tab: the writ title needs the room)
+  T.wref:SetShown(writTab and true or false)
+  if writTab then
+    -- the writ route in place of the quests
+    for _, b in ipairs(btns) do b:Hide() end
+    PlaceItems({})
+    local w = (T:GetWidth() or WIDTH) - 24
+    local h, title = WR.Draw(T.writs, w)
+    h = h or 0
+    T.title:SetText(title or "Writ route")
+    T.writs:SetSize(w, math.max(1, h))
+    T.wscroll:SetShown(not d.trackerMin)
+    if d.trackerMin then T:SetHeight(24); return end
+    -- as tall as it needs, up to the tracker's tallest (the resize grip sets it); past that, scroll
+    local maxH = d.trackerMaxH or ((UIParent:GetHeight() or 768) * 0.55)
+    local show = math.min(h, math.max(60, maxH - 32))
+    T:SetHeight(24 + show + 8)
+    local sb = T.wscroll.ScrollBar
+    if sb then sb:SetShown(h > show + 1) end
+    if h <= show + 1 then T.wscroll:SetVerticalScroll(0) end
+    return
+  end
+  T.wscroll:Hide()
   if d.trackerMin then T:SetHeight(24); return end
   local maxH = d.trackerMaxH or ((UIParent:GetHeight() or 768) * 0.55)
   local maxLines = math.max(3, math.floor((maxH - 30) / LINE_H))
@@ -609,7 +696,7 @@ function NS.RefreshTracker()
     if row.item and not row.obj and not row.future then
       -- the item button hangs just outside the tracker's left edge, level with the quest (the list isn't pushed over)
       local nxt = rows[k + 1]
-      lineFor[b] = { id = row.item.id, icon = row.item.icon, tall = (nxt and nxt.obj and shown < maxLines) and true or false }
+      lineFor[b] = { id = row.item.id, icon = row.item.icon, y = y, tall = (nxt and nxt.obj and shown < maxLines) and true or false }
     end
     b.doneBtn:Hide()
     if row.doneTag and row.head then

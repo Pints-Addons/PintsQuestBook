@@ -417,6 +417,21 @@ function NS.MapToWorld(mapID, x, y)
   if apiOrder == 2 then a, b = b, a end
   return cont, a, b
 end
+-- WoW Forever: mailboxes where Wowhead's WoW Forever database has them (TownData.lua), in place of the old list
+do
+  local f = CreateFrame("Frame")
+  f:RegisterEvent("PLAYER_LOGIN")
+  f:SetScript("OnEvent", function()
+    local T = _G.PintsTownData
+    if not (T and T.mailForever and type(issecretvalue) == "function") then return end
+    local out, m = {}, T.mailForever
+    for k = 1, #m, 3 do
+      local cont, wx, wy = NS.MapToWorld(m[k], m[k + 1], m[k + 2])
+      if cont and wx then out[#out + 1] = cont; out[#out + 1] = wx; out[#out + 1] = wy end
+    end
+    if #out > 0 then T.mail = out end
+  end)
+end
 local function Waypoint(mapID, x, y, title)
   local cont, wx, wy = NS.MapToWorld(mapID, x, y)
   if cont and NS.ArrowTo then
@@ -831,6 +846,12 @@ local function ListRow(i)
   local hl = r:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(); hl:SetColorTexture(0.45, 0.30, 0.10, 0.12)
   r.line = r:CreateTexture(nil, "ARTWORK"); r.line:SetColorTexture(INK_FAINT[1], INK_FAINT[2], INK_FAINT[3], 0.7); r.line:SetWidth(1)
   r.tick = r:CreateTexture(nil, "ARTWORK"); r.tick:SetColorTexture(INK_FAINT[1], INK_FAINT[2], INK_FAINT[3], 0.7); r.tick:SetSize(8, 1)
+  -- a chain step: a numbered disc on a gold line that runs from the chain's first step to its last
+  r.badge = r:CreateTexture(nil, "OVERLAY", nil, 1); r.badge:SetSize(17, 17); r.badge:SetTexture("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
+  r.ring = r:CreateTexture(nil, "OVERLAY", nil, 0); r.ring:SetSize(20, 20); r.ring:SetTexture("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
+  r.ring:SetVertexColor(GOLD[1], GOLD[2], GOLD[3], 1); r.ring:SetPoint("CENTER", r.badge, "CENTER")
+  r.stepN = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); r.stepN:SetPoint("CENTER", r.badge, "CENTER", 0, 0)
+  r.badge:Hide(); r.ring:Hide(); r.stepN:Hide()
   r.lvl = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall"); r.lvl:SetWidth(28); r.lvl:SetJustifyH("RIGHT")
   r.title = r:CreateFontString(nil, "OVERLAY", F_ROW); r.title:SetJustifyH("LEFT"); r.title:SetWordWrap(false)
   r.icon = r:CreateTexture(nil, "OVERLAY"); r.icon:SetSize(14, 14); r.icon:SetPoint("RIGHT", -4, 0)
@@ -1006,7 +1027,8 @@ local function RenderLog()
   for i, rw in ipairs(rows) do
     local r = ListRow(i)
     r.id, r.logIndex, r.inZone, r.header, r.future = rw.id, rw.logIndex, true, rw.header, rw.future
-    r.bg:SetColorTexture(0, 0, 0, 0); r.line:Hide(); r.tick:Hide(); r.accept:Hide()
+    r.bg:SetColorTexture(0, 0, 0, 0); r.line:Hide(); r.tick:Hide(); r.accept:Hide(); r.badge:Hide(); r.ring:Hide(); r.stepN:Hide()
+    r.line:SetWidth(1)
     if rw.future then
       local q = D.quests[rw.id]
       local indent = 10 + math.min(rw.depth, 6) * 14
@@ -1079,7 +1101,8 @@ function RenderSearch()
     local q = D.quests[id]
     local r = ListRow(i)
     r.id, r.logIndex, r.inZone, r.header, r.future = id, nil, true, nil, nil
-    r.bg:SetColorTexture(0, 0, 0, 0); r.line:Hide(); r.tick:Hide(); r.accept:Hide()
+    r.bg:SetColorTexture(0, 0, 0, 0); r.line:Hide(); r.tick:Hide(); r.accept:Hide(); r.badge:Hide(); r.ring:Hide(); r.stepN:Hide()
+    r.line:SetWidth(1)
     r.title:SetFontObject(F_ROW)
     PlaceRow(r, y, 10)
     local st = Status(id)
@@ -1358,18 +1381,41 @@ function Render()
   win.seal:SetText(when and ("~ Completed " .. when .. " ~") or "~ Chapter complete ~")
   local y = 0
   local tints = { { 0.55, 0.40, 0.20, 0.10 }, { 0.35, 0.25, 0.10, 0.06 } }
+  -- where each chain starts and ends in the list (for its gold line)
+  for i, rw in ipairs(rows) do
+    rw.first = not (rows[i - 1] and rows[i - 1].chain == rw.chain)
+    rw.last = not (rows[i + 1] and rows[i + 1].chain == rw.chain)
+  end
   for i, rw in ipairs(rows) do
     local r = ListRow(i)
     local q = D.quests[rw.id]
     r.id, r.inZone, r.logIndex, r.header, r.future = rw.id, rw.inZone, logIdx[rw.id], nil, nil
-    local indent = math.min(rw.depth, 8) * 14
+    -- chains as numbered steps: 1, 2, 3... on a gold line down the left (done steps green, the one you're on gold);
+    -- quests on their own sit level with the steps' titles
+    local chained = rw.size > 1
+    local indent = 26
     PlaceRow(r, y, indent)
-    if rw.size > 1 then local t = tints[rw.chain % 2 + 1]; r.bg:SetColorTexture(t[1], t[2], t[3], t[4]) else r.bg:SetColorTexture(0, 0, 0, 0) end
-    -- chain connector
-    if rw.depth > 0 then
-      r.line:ClearAllPoints(); r.line:SetPoint("TOPLEFT", indent - 8, 0); r.line:SetPoint("BOTTOMLEFT", indent - 8, 10); r.line:Show()
-      r.tick:ClearAllPoints(); r.tick:SetPoint("LEFT", indent - 8, 0); r.tick:Show()
-    else r.line:Hide(); r.tick:Hide() end
+    if chained then local t = tints[rw.chain % 2 + 1]; r.bg:SetColorTexture(t[1], t[2], t[3], t[4]) else r.bg:SetColorTexture(0, 0, 0, 0) end
+    r.tick:Hide()
+    if chained then
+      local stS = Status(rw.id)
+      local on = stS == "log" or stS == "ready"
+      r.badge:ClearAllPoints(); r.badge:SetPoint("CENTER", r, "LEFT", 12, 0)
+      if stS == "done" then r.badge:SetVertexColor(0.18, 0.48, 0.18, 1)
+      elseif on then r.badge:SetVertexColor(GOLD[1], GOLD[2], GOLD[3], 1)
+      else r.badge:SetVertexColor(0.30, 0.22, 0.12, 1) end
+      r.ring:SetShown(on)
+      r.stepN:SetText(rw.depth + 1)
+      if on then r.stepN:SetTextColor(0.15, 0.08, 0) else r.stepN:SetTextColor(1, 0.95, 0.85) end
+      r.badge:Show(); r.stepN:Show()
+      r.line:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.95); r.line:SetWidth(3)
+      r.line:ClearAllPoints()
+      r.line:SetPoint("TOP", r, "TOPLEFT", 12, rw.first and -11 or 0)
+      r.line:SetPoint("BOTTOM", r, "BOTTOMLEFT", 12, rw.last and 11 or 0)
+      r.line:SetShown(not (rw.first and rw.last))
+    else
+      r.badge:Hide(); r.ring:Hide(); r.stepN:Hide(); r.line:Hide()
+    end
     r.lvl:SetText(Hex(LevelColor(q[2], rw.id)) .. "[" .. (q[2] > 0 and q[2] or "?") .. "]|r")
     local st = Status(rw.id)
     -- accepted quests are written in blue ink (green when ready to hand in) with a matching mark at the edge

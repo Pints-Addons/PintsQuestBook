@@ -1,5 +1,15 @@
 Pint's Quest Book - Changelog
 
+v1.9.6
+- Quest tracker item buttons sit level with their quest again. After the list changed (a quest added, done or a zone
+  folded) they could sit a line or more off, beside the wrong quest or a zone name.
+- Quest tracker item buttons only go on quests the item is for. An item now has to share a word of its name, or two
+  words of its "Use:" text, with the quest - one shared word (like "crystal") put items on unrelated quests.
+- Quest tracker: an item the game names for a quest only shows on that quest (Sign of the Earth showed on two).
+- WoW Forever: quest experience is Forever's own, from Wowhead's WoW Forever database (4,768 quests) - it was
+  worked out from Classic's rewards, and Forever changed many (Call of Water 185, not 1,250) and its own quests had none.
+  XP you actually get in game still takes over once you've seen it.
+
 v1.9.5
 - WoW Forever: the quest list checked against Wowhead's WoW Forever database. 3,475 of the book's quests are on Forever
   as they are, and 658 changed - Forever's levels, required levels and titles are used now, and a quest's page says
