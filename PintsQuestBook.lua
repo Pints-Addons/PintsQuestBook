@@ -2672,6 +2672,7 @@ SlashCmdList.PINTSQUESTBOOK = function(msg)
     db.hidden = {}; BuildIndex(); QB.Refresh()
     print(("|cffd4a24cQuest Book|r: %d hidden quest%s restored."):format(n, n == 1 and "" or "s")); return
   end
+  if msg == "classic" then if NS.ToggleUnconfirmed then NS.ToggleUnconfirmed() else print("|cffd4a24cQuest Book|r: nothing is hidden outside WoW Forever.") end; return end
   if msg == "areas" then if NS.AreaDebug then NS.AreaDebug() end; return end
   if msg:match("^rec") then if NS.RecorderCmd then NS.RecorderCmd(msg:match("^rec%a*%s*(.*)$")) end; return end
   if msg == "options" then if NS.ToggleOptions then NS.ToggleOptions() end; return end

@@ -239,6 +239,37 @@ local function ApplyWowhead()
 			if w[5] and w[5] ~= "" then q.to = w[5] end
 		end
 	end
+	-- who gives and takes each of Forever's own quests, and where they stand (WowheadGivers.lua): Wowhead's map for the
+	-- quest, by zone name and map %, turned into world positions here (a giver you've seen in game still wins - your
+	-- recordings are applied after this)
+	if W.giv and NS.MapToWorld and C_Map and C_Map.GetMapChildrenInfo then
+		local uiMap = {}
+		for _, root in ipairs({ 947, 946 }) do
+			local ok, kids = pcall(C_Map.GetMapChildrenInfo, root, nil, true)
+			if ok and kids then for _, m in ipairs(kids) do if m.name and not uiMap[m.name] then uiMap[m.name] = m.mapID end end end
+		end
+		local function Spot(zone, x, y)
+			local m = zone and uiMap[zone]
+			if not (m and x and y) then return end
+			local cont, wx, wy = NS.MapToWorld(m, x, y)
+			if cont and wx then return cont, wx, wy end
+		end
+		for id, g in pairs(W.giv) do
+			local q = d.quests[id]
+			if q and (q.whNew or q.whMoved or (q[18] or -1) < 0) then
+				if g[1] and g[1] ~= "" then
+					q[13] = NameIndex(g[1]) or q[13]
+					local c, x, y = Spot(g[2], g[3], g[4])
+					if c then q[18], q[19], q[20] = c, x, y end
+				end
+				if g[5] and g[5] ~= "" then
+					q[14] = NameIndex(g[5]) or q[14]
+					local c, x, y = Spot(g[6], g[7], g[8])
+					if c then q[21], q[22], q[23] = c, x, y end
+				end
+			end
+		end
+	end
 end
 
 -- called by the book at login, before it builds its index
@@ -253,8 +284,13 @@ function NS.ApplyRecorded()
 	-- quests gathered in WoW Forever by Pint's Add-ons (HarvestData.lua), for the ones you haven't recorded yourself
 	local H = _G.PintsQuestHarvest
 	if H and H.quests and type(issecretvalue) == "function" then
+		local W = _G.PintsQuestWowhead or {}
 		for id, h in pairs(H.quests) do
-			if not rec.quests[id] then
+			-- (entries taken from the published beta guides - no positions, no experience read in game - give way to
+			-- Wowhead's WoW Forever data where it has the quest; ones gathered in game still count)
+			local guide = not h.xpRaw and not (h.s and h.s[2]) and not (h.e and h.e[2])
+			local wh = (W.rew and W.rew[id]) or (W.giv and W.giv[id])
+			if not rec.quests[id] and not (guide and wh) then
 				local r = {}
 				for k, v in pairs(h) do r[k] = v end
 				if not r.z and r.zn then r.z = ZoneIdFor(r.zn) end

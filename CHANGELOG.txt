@@ -1,5 +1,27 @@
 Pint's Quest Book - Changelog
 
+v1.9.10
+- WoW Forever: the Classic rares are where Forever has them - a spot Forever doesn't have one near is dropped, Forever's
+  own spots are added, and a rare that moved shows its new home. Their levels and best drops (1% or better) are
+  Forever's too. From each rare's Wowhead WoW Forever page.
+- WoW Forever: every Classic rare was checked against Wowhead's Forever pages - 334 of 335 are there. Geomancer
+  Flintdagger isn't, and two Classic townsfolk (Kalldan Felmoon, Waldor) aren't confirmed yet, so they're hidden until
+  they are; /qb classic shows them.
+- WoW Forever: 225 townsfolk Forever added are on the map and minimap - the City of Dalaran's innkeepers, bankers,
+  trainers and battlemasters, the new class trainers (Shaman in Dun Morogh, Paladin in Tirisfal...), the Junior
+  gathering trainers, and new innkeepers, stable and flight masters and vendors. From Wowhead's WoW Forever NPC pages.
+- WoW Forever: 81 rares join the Rare Spawns chapter - Zephras Isle's, the Riverglades' (Gul'gash, Scaldaron, Mad
+  Marrius...), Mount Hyjal's (Pexmit, Old Rusthowl...), the new starting-zone rares, and Classic ones the list
+  missed (Barnabus, Avalanchion...) - with where they've been seen and their best drops.
+- WoW Forever: quests copied from the published beta guides no longer override Wowhead's WoW Forever data (78 quests).
+- WoW Forever: 456 of Forever's own quests shade where their objectives can be done on the map, like the Classic quests
+  - from the maps on Wowhead's WoW Forever quest pages.
+
+v1.9.9
+- WoW Forever: Forever's own quests (1,435 of them) know who gives and takes them and where they stand, from Wowhead's
+  WoW Forever quest pages - on the map, the arrow and the quest's tooltip before you've ever seen the giver. Quests
+  that start from an item have only their turn-in. A giver you've met in game still wins.
+
 v1.9.6
 - Quest tracker item buttons sit level with their quest again. After the list changed (a quest added, done or a zone
   folded) they could sit a line or more off, beside the wrong quest or a zone name.
