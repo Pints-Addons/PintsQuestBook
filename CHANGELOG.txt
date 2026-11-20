@@ -1,5 +1,12 @@
 Pint's Quest Book - Changelog
 
+v1.9.11
+- World map: on the continent and world maps the quest ! and other icons only show their tooltip - a click goes through
+  to the map and opens the zone. On a zone's own map they take clicks as before (Ctrl-click works anywhere).
+- WoW Forever: all 1,427 Classic townsfolk were checked against Wowhead's WoW Forever NPC pages - every one is there.
+  One that stands more than 30 yards from its Classic spot is shown where Forever has it. Kalldan Felmoon and Waldor
+  are confirmed and back on the map.
+
 v1.9.10
 - WoW Forever: the Classic rares are where Forever has them - a spot Forever doesn't have one near is dropped, Forever's
   own spots are added, and a rare that moved shows its new home. Their levels and best drops (1% or better) are

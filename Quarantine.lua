@@ -3,7 +3,7 @@
 local ADDON, NS = ...
 if type(issecretvalue) ~= "function" then return end   -- (WoW Forever only)
 local RARES = { [2609] = true }                 -- Geomancer Flintdagger (Alterac Mountains)
-local TOWN = { [5783] = true, [5784] = true }   -- Kalldan Felmoon, Waldor (Wailing Caverns' cave)
+local TOWN = {}                                 -- (all 1,427 Classic townsfolk are confirmed)
 local held = { rares = {}, npcs = {} }
 local function Apply(show)
 	local R, T = _G.PintsRareData, _G.PintsTownData

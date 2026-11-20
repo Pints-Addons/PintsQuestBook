@@ -269,7 +269,24 @@ function PintsStorybookPinMixin:OnLoad()
   if self.UseFrameLevelType then pcall(self.UseFrameLevelType, self, "PIN_FRAME_LEVEL_AREA_POI") end
   if self.SetScalingLimits then pcall(self.SetScalingLimits, self, 1, 0.85, 1.15) end
 end
+-- clicks: on a zone's own map the icons take clicks; on the continent and world maps they only show their tooltip and a
+-- click goes straight through to the map (zoom into the zone) - hold Ctrl to click them there too
+local function ZoneMap(pin)
+  local map = pin.GetMap and pin:GetMap()
+  local id = map and map.GetMapID and map:GetMapID()
+  local info = id and C_Map.GetMapInfo(id)
+  return info and info.mapType and info.mapType >= 3
+end
+local function ClickState(pin)
+  if not pin.SetMouseClickEnabled then return end
+  pin:SetMouseMotionEnabled(true)
+  pin:SetMouseClickEnabled((IsControlKeyDown() or ZoneMap(pin)) and true or false)
+end
 function PintsStorybookPinMixin:OnAcquired(p)
+  self:PintsAcquire(p)
+  ClickState(self)          -- (after the scripts are set: setting a mouse script turns clicks back on)
+end
+function PintsStorybookPinMixin:PintsAcquire(p)
   self.p = p
   self:SetPosition(p.x, p.y)
   if self.badge then self.badge:Hide(); self.rim:Hide() end    -- (pins are reused: undo a quest badge)
@@ -482,10 +499,7 @@ do
   cf:SetScript("OnEvent", function(_, _, key)
     if key ~= "LCTRL" and key ~= "RCTRL" then return end
     if not (WorldMapFrame and WorldMapFrame:IsShown() and WorldMapFrame.EnumeratePinsByTemplate) then return end
-    local on = IsControlKeyDown() and true or false
-    for pin in WorldMapFrame:EnumeratePinsByTemplate("PintsStorybookPinTemplate") do
-      if pin.SetMouseClickEnabled then pin:SetMouseClickEnabled(on) end
-    end
+    for pin in WorldMapFrame:EnumeratePinsByTemplate("PintsStorybookPinTemplate") do ClickState(pin) end
   end)
 end
 
