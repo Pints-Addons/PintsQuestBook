@@ -54,6 +54,10 @@ NS.MAP_VEND = { "v:ammo", "v:bags", "v:drink", "v:food", "v:poisons", "v:potions
 NS.MAP_LABEL, NS.MAP_ICON = LABEL, ICON
 local CLASS_ID = { WARRIOR = 1, PALADIN = 2, HUNTER = 3, ROGUE = 4, PRIEST = 5, SHAMAN = 7, MAGE = 8, WARLOCK = 9, DRUID = 11 }
 
+-- Felwood's corrupted flowers: each Songflower, Windblossom, Whipper Root and Night Dragon is its own little quest,
+-- which floods the Felwood map with "!"s - they can be hidden with one tick
+local FLOWERS = { ["Corrupted Songflower"] = true, ["Corrupted Windblossom"] = true, ["Corrupted Whipper Root"] = true, ["Corrupted Night Dragon"] = true }
+function NS.IsFlowerQuest(q) return q and FLOWERS[q[1]] or false end
 function NS.MapDefaults(d)
   d.map = d.map or {}
   local m = d.map
@@ -69,6 +73,7 @@ function NS.MapDefaults(d)
   if m.rares == nil then m.rares = true end
   if m.qareas == nil then m.qareas = true end
   if m.qlow == nil then m.qlow = true end
+  if m.qflowers == nil then m.qflowers = true end
   if not m.qlowAll then m.qlowAll = true; m.qlow = true end   -- show every quest you can pick up, grey ones too (once)
   -- WoW Forever: every giver the book knows gets a "!", not only the ones checked in game (faded until checked) (once)
   if type(issecretvalue) == "function" and not m.qunvAll then m.qunvAll = true; m.qunverified = true end
@@ -246,7 +251,7 @@ local function QuestPins(mapID, m, continent)
   for id in pairs(NS.Valid) do
     local q = D.quests[id]
     local st = NS.Status(id)
-    if not PinOK(q, m) then
+    if not PinOK(q, m) or (not m.qflowers and FLOWERS[q[1]]) then
       -- (left off the map)
     elseif m.qavail and st == "available" and (m.qlow or not NS.IsTrivial(q[2])) then
       put("qavail", id, q[18], q[19], q[20], D.names[q[13]])
@@ -534,6 +539,7 @@ function NS.ToggleMapOptions(anchor)
     add(16, -84, "Quests to pick up", ICON.qavail, function() return m.qavail end, function(v) m.qavail = v end)
     add(16, -104, "Quests to turn in", ICON.qturn, function() return m.qturn end, function(v) m.qturn = v end)
     add(16, -124, "Low-level quests", ICON.qavail, function() return m.qlow end, function(v) m.qlow = v end)
+    add(344, -332, "Felwood's corrupted flowers", ICON.qavail, function() return m.qflowers end, function(v) m.qflowers = v end)
     add(344, -312, "Quests on continent maps", ICON.qturn, function() return m.qcontinent ~= false end, function(v) m.qcontinent = v end)
     add(344, -272, "Quest objective areas", nil, function() return m.qareas end, function(v) m.qareas = v end)
     if FOREVER then add(344, -292, "Unchecked quests (faded)", ICON.qavail, function() return m.qunverified end, function(v) m.qunverified = v end) end
@@ -627,6 +633,7 @@ function NS.ToggleIconMenu(anchor)
   item(1, "Quests to pick up", ICON.qavail, function() return m.qavail end, function(v) m.qavail = v end)
   item(1, "Quests to turn in", ICON.qturn, function() return m.qturn end, function(v) m.qturn = v end)
   item(1, "Low-level quests", ICON.qavail, function() return m.qlow end, function(v) m.qlow = v end)
+  item(1, "Corrupted flowers", ICON.qavail, function() return m.qflowers end, function(v) m.qflowers = v end)
   item(1, "On continent maps", ICON.qturn, function() return m.qcontinent ~= false end, function(v) m.qcontinent = v end)
   item(1, "Objective areas", nil, function() return m.qareas end, function(v) m.qareas = v end)
   item(1, "Rare mobs", nil, function() return m.rares end, function(v) m.rares = v end)
@@ -775,7 +782,7 @@ local function Gather(cont, px, py)
     for id in pairs(NS.Valid) do
       local q = D.quests[id]
       local st = NS.Status(id)
-      if not PinOK(q, m) then
+      if not PinOK(q, m) or (not m.qflowers and FLOWERS[q[1]]) then
         -- (left off the map)
       elseif m.qavail and st == "available" and (m.qlow or not NS.IsTrivial(q[2])) then put("qavail", id, q[18], q[19], q[20], D.names[q[13]])
       elseif m.qturn and st == "ready" then put("qturn", id, q[21], q[22], q[23], D.names[q[14]]) end

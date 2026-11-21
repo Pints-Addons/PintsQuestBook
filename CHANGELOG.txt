@@ -1,5 +1,17 @@
 Pint's Quest Book - Changelog
 
+v1.9.12
+- Filters: Hide chain steps - leaves out a chain's later steps you can't take yet, so only the step you're on shows. (The
+  filter labels are shorter to fit: Other faction, Low-level.)
+- Chains: steps you can't take yet (an earlier step comes first) are indented under the step that opens them.
+- WoW Forever: the raids are gone from the Dungeons & Raids chapter list (and Prev./Next chapter) until they open there.
+- World map: a new tick box, Corrupted flowers (in the Map icons drop-down and Options -> Map icons...), hides the
+  "!" of every Corrupted Songflower, Windblossom, Whipper Root and Night Dragon in Felwood. They show by default.
+- Quests that ask something of you first are no longer shown as ready to pick up until you have it: a profession
+  skill (A Blue Light Bargain wants Blacksmithing 265), a reputation (War at Sea is only for those Gadgetzan dislikes),
+  or an earlier step done - for either faction's version of it (Bungle in the Jungle after March of the Silithid). From
+  the CMaNGOS Classic database (QuestReqs.lua, 529 quests).
+
 v1.9.11
 - World map: on the continent and world maps the quest ! and other icons only show their tooltip - a click goes through
   to the map and opens the zone. On a zone's own map they take clicks as before (Ctrl-click works anywhere).

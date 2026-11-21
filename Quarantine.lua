@@ -7,7 +7,7 @@ local TOWN = {}                                 -- (all 1,427 Classic townsfolk 
 local held = { rares = {}, npcs = {} }
 local function Apply(show)
 	local R, T = _G.PintsRareData, _G.PintsTownData
-	for list, ids, src in pairs({ rares = { RARES, R and R.rares }, npcs = { TOWN, T and T.npcs } }) do
+	for list, src in pairs({ rares = { RARES, R and R.rares }, npcs = { TOWN, T and T.npcs } }) do
 		local set, tbl = src[1], src[2]
 		if tbl then
 			for id in pairs(set) do

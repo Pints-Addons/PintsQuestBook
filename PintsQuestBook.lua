@@ -527,6 +527,55 @@ local function CheckHolidays()
   end
 end
 NS.CheckHolidays = CheckHolidays
+-- what a quest asks of you before it's offered (QuestReqs.lua): a profession skill, a reputation, other quests done
+local SKILL_NAME = { [164] = "Blacksmithing", [165] = "Leatherworking", [171] = "Alchemy", [182] = "Herbalism", [185] = "Cooking",
+  [186] = "Mining", [197] = "Tailoring", [202] = "Engineering", [333] = "Enchanting", [356] = "Fishing", [393] = "Skinning",
+  [129] = "First Aid", [40] = "Poisons" }
+local skills, skillsAt = {}, 0
+local function Skill(id)
+  if GetTime() - skillsAt > 10 then
+    skillsAt = GetTime(); wipe(skills)
+    for i = 1, (GetNumSkillLines and GetNumSkillLines() or 0) do
+      local name, header, _, rank = GetSkillLineInfo(i)
+      if name and not header then skills[name] = rank end
+    end
+  end
+  return skills[SKILL_NAME[id] or ""] or 0
+end
+local function Rep(faction)
+  if not GetFactionInfoByID then return 0, 4 end
+  local ok, _, _, standing, _, _, value = pcall(GetFactionInfoByID, faction)
+  if not ok or not value then return 0, 4 end
+  return value, standing
+end
+local function Cond(c, depth)
+  local R = _G.PintsQuestReqs
+  local d = R and R.c[c]
+  if not d or depth > 8 then return true end
+  local t, v1, v2, v3, v4, flags = d[1], d[2], d[3], d[4], d[5], d[6]
+  local r = true
+  if t == -1 then for _, v in ipairs({ v1, v2, v3, v4 }) do if v > 0 and not Cond(v, depth + 1) then r = false end end
+  elseif t == -2 then r = false; for _, v in ipairs({ v1, v2, v3, v4 }) do if v > 0 and Cond(v, depth + 1) then r = true end end
+  elseif t == -3 then r = not Cond(v1, depth + 1)
+  elseif t == 8 then r = IsDone(v1)
+  elseif t == 9 then r = inLog[v1] and true or false
+  elseif t == 7 then r = Skill(v1) >= v2
+  elseif t == 5 then local _, st = Rep(v1); r = bit and bit.band(v2, bit.lshift(1, (st or 4) - 1)) ~= 0 or true
+  elseif t == 2 then local n = (C_Item and C_Item.GetItemCount and C_Item.GetItemCount(v1, true)) or (GetItemCount and GetItemCount(v1, true)) or 0; r = n >= v2 end
+  if flags and flags % 2 == 1 then r = not r end
+  return r
+end
+local function MeetsReqs(id)
+  local R = _G.PintsQuestReqs
+  local q = R and R.q[id]
+  if not q then return true end
+  if q[1] > 0 and Skill(q[1]) < q[2] then return false end
+  if q[3] > 0 and (Rep(q[3])) < q[4] then return false end
+  if q[5] > 0 and (Rep(q[5])) >= q[6] then return false end
+  if q[7] > 0 and not Cond(q[7], 0) then return false end
+  return true
+end
+NS.MeetsReqs = MeetsReqs
 local function Status(id)
   if IsDone(id) then return "done" end
   if inLog[id] then return inLog[id] == "done" and "ready" or "log" end
@@ -535,6 +584,7 @@ local function Status(id)
   -- holiday quests (Lunar Festival elders, Darkmoon Faire, Children's Week...) can't be taken outside their event
   if EVENT_SORT[q[4] or 0] and not db.showEvents and not ACTIVE_SORT[q[4]] then return "event" end
   if q[7] > 0 and valid[q[7]] and not IsDone(q[7]) then return "locked" end
+  if not MeetsReqs(id) then return "locked" end
   return "available"
 end
 -- party members who also have this quest (needs it in your own log); empty when you're alone
@@ -636,6 +686,7 @@ local function ZoneRows(zone)
     local function walk(id, depth)
       local q = D.quests[id]
       local hide = (db.hideDone and IsDone(id)) or (not db.showLow and not IsDone(id) and IsTrivial(q[2], id) and not inLog[id])
+        or (db.hideChain and Status(id) == "locked")      -- (a chain's later steps you can't take yet)
       if not hide then rows[#rows + 1] = { id = id, depth = depth, inZone = ZoneOf(q) == zone, chain = ci, size = size } end
       for _, c in ipairs(children[id] or {}) do walk(c, depth + 1) end
     end
@@ -813,7 +864,9 @@ end
 local function ZonesInGroup(g)
   local list = {}
   for id, z in pairs(NS.ZONES) do
-    if z[2] == g and (z[5] ~= "class" or z[6] == select(2, UnitClass("player"))) then list[#list + 1] = id end
+    -- (WoW Forever: raids haven't opened there, so they stay out of the book until they do)
+    local closedRaid = z[5] == "raid" and type(issecretvalue) == "function"
+    if z[2] == g and not closedRaid and (z[5] ~= "class" or z[6] == select(2, UnitClass("player"))) then list[#list + 1] = id end
   end
   local order = { zone = 1, city = 2, dungeon = 3, raid = 4, bg = 5, class = 1, prof = 2, event = 1 }
   table.sort(list, function(a, b)
@@ -1393,7 +1446,8 @@ function Render()
     -- chains as numbered steps: 1, 2, 3... on a gold line down the left (done steps green, the one you're on gold);
     -- quests on their own sit level with the steps' titles
     local chained = rw.size > 1
-    local indent = 26
+    -- a chain's later steps you can't take yet (an earlier step first) sit indented under the step that opens them
+    local indent = (chained and Status(rw.id) == "locked") and 44 or 26
     PlaceRow(r, y, indent)
     if chained then local t = tints[rw.chain % 2 + 1]; r.bg:SetColorTexture(t[1], t[2], t[3], t[4]) else r.bg:SetColorTexture(0, 0, 0, 0) end
     r.tick:Hide()
@@ -2102,8 +2156,8 @@ local function CreateWindow()
   barBg:SetColorTexture(INK_FAINT[1], INK_FAINT[2], INK_FAINT[3], 0.35)
   win.zoneBar = win.zoneL:CreateTexture(nil, "OVERLAY"); win.zoneBar:SetPoint("TOPLEFT", barBg, "TOPLEFT"); win.zoneBar:SetHeight(3)
   win.zoneBar:SetColorTexture(RUBRIC[1], RUBRIC[2], RUBRIC[3], 0.85)
-  win.checks = { Check(win.zoneL, "Hide completed", "hideDone", 18, -90), Check(win.zoneL, "Show other faction", "otherFaction", 150, -90),
-    Check(win.zoneL, "Show low-level quests", "showLow", 290, -90) }
+  win.checks = { Check(win.zoneL, "Hide completed", "hideDone", 18, -90), Check(win.zoneL, "Other faction", "otherFaction", 136, -90),
+    Check(win.zoneL, "Low-level", "showLow", 240, -90), Check(win.zoneL, "Hide chain steps", "hideChain", 326, -90) }
   win.seal = win.zoneL:CreateFontString(nil, "OVERLAY", F_CHAPTER); win.seal:SetPoint("TOPRIGHT", -22, -40)
   win.seal:SetTextColor(0.10, 0.40, 0.10); win.seal:SetText("~ Chapter complete ~")
   win.blizzLog = StoryButton(win.zoneL, "Blizzard's quest log", 160, 20); win.blizzLog:SetPoint("TOPRIGHT", -18, -88)
