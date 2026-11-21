@@ -1,5 +1,13 @@
 Pint's Quest Book - Changelog
 
+v1.9.13
+- Quests you're past aren't offered any more: when a later step of a chain is done or in your log, the earlier step
+  (a breadcrumb you skipped, or a first step WoW Forever no longer asks for) leaves the map and shows as passed - A Little
+  Luck once you're on Luck Be With You, Trouble in Winterspring once you're past Threat of the Winterfall.
+- WoW Forever: 173 of Forever's own quests know the step before them (worked out from who gives and takes them on
+  Wowhead) - Crate Expectations waits for Premiere Parts, and so on (ForeverChains.lua).
+- Find a quest: clicking a quest in the results turns to its zone's chapter with the quest open (the search clears).
+
 v1.9.12
 - Filters: Hide chain steps - leaves out a chain's later steps you can't take yet, so only the step you're on shows. (The
   filter labels are shorter to fit: Other faction, Low-level.)

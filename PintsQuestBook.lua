@@ -576,9 +576,20 @@ local function MeetsReqs(id)
   return true
 end
 NS.MeetsReqs = MeetsReqs
+-- a later step of this quest's chain already done or in your log: you're past this one (a breadcrumb you skipped, or
+-- a first step WoW Forever no longer asks for) - the game won't offer it any more
+local function PastIt(id, depth)
+  depth = depth or 0
+  if depth > 8 then return false end
+  for _, c in ipairs(children[id] or {}) do
+    if IsDone(c) or inLog[c] or PastIt(c, depth + 1) then return true end
+  end
+  return false
+end
 local function Status(id)
   if IsDone(id) then return "done" end
   if inLog[id] then return inLog[id] == "done" and "ready" or "log" end
+  if PastIt(id) then return "passed" end
   local q = Q(id)
   if (q[3] or 0) > UnitLevel("player") then return "later" end
   -- holiday quests (Lunar Festival elders, Darkmoon Faire, Children's Week...) can't be taken outside their event
@@ -608,7 +619,8 @@ local STATUS_ICON = {
   log = "Interface\\GossipFrame\\IncompleteQuestIcon", available = "Interface\\GossipFrame\\AvailableQuestIcon",
 }
 local STATUS_TEXT = { done = "Completed", ready = "Ready to turn in", log = "In your quest log", available = "Available now",
-  later = "Needs level %d", locked = "Finish the earlier step first" }
+  later = "Needs level %d", locked = "Finish the earlier step first",
+  passed = "You're past this step (a later one is done or in your log)" }
 
 ---------------------------------------------------------------- index (who belongs, chains)
 -- "On WoW Forever (Wowhead): rewards changed" and the like
@@ -685,7 +697,7 @@ local function ZoneRows(zone)
     local size = ChainSize(r)
     local function walk(id, depth)
       local q = D.quests[id]
-      local hide = (db.hideDone and IsDone(id)) or (not db.showLow and not IsDone(id) and IsTrivial(q[2], id) and not inLog[id])
+      local hide = (db.hideDone and (IsDone(id) or Status(id) == "passed")) or (not db.showLow and not IsDone(id) and IsTrivial(q[2], id) and not inLog[id])
         or (db.hideChain and Status(id) == "locked")      -- (a chain's later steps you can't take yet)
       if not hide then rows[#rows + 1] = { id = id, depth = depth, inZone = ZoneOf(q) == zone, chain = ci, size = size } end
       for _, c in ipairs(children[id] or {}) do walk(c, depth + 1) end
@@ -922,6 +934,15 @@ local function ListRow(i)
       BuildIndex(); Render(); return
     end
     selected, selectedLog = self.id, self.logIndex
+    -- a quest picked from the search results: turn to its zone's chapter, with the quest open
+    if curView == "search" and self.id and D.quests[self.id] then
+      local z = ZoneOf(D.quests[self.id])
+      if z and NS.ZONES[z] then
+        curZone, curGroup, curView = z, NS.ZONES[z][2], "zone"
+        searchText = nil
+        if win.find then win.find:SetText(""); win.find:ClearFocus() end
+      end
+    end
     if SOUNDKIT and SOUNDKIT.IG_ABILITY_PAGE_TURN then PlaySound(SOUNDKIT.IG_ABILITY_PAGE_TURN) end
     Render()
     if detail.turn then detail.turn:Stop(); detail.turn:Play() end
@@ -1474,7 +1495,7 @@ function Render()
     local st = Status(rw.id)
     -- accepted quests are written in blue ink (green when ready to hand in) with a matching mark at the edge
     local col = (st == "log") and BLUE_INK or (st == "ready") and { 0.08, 0.42, 0.08 }
-      or ((st == "done" or st == "later" or st == "locked" or st == "event") and INK_FAINT) or (rw.inZone and INK or INK_SOFT)
+      or ((st == "done" or st == "passed" or st == "later" or st == "locked" or st == "event") and INK_FAINT) or (rw.inZone and INK or INK_SOFT)
     r.accept:SetShown(st == "log" or st == "ready"); r.accept:SetColorTexture(col[1], col[2], col[3], 0.9)
     local title = q[1] .. ((rw.depth == 0 and rw.size > 1) and ("  |cff8a7050(" .. rw.size .. "-part chain)|r") or "")
     if not rw.inZone then title = title .. "  |cff8a7050- " .. ZoneName(ZoneOf(q)) .. "|r" end
@@ -2031,6 +2052,7 @@ local function CreateWindow()
   win.groupBtn = DropButton(win, 168); win.groupBtn:SetPoint("RIGHT", win.zoneBtn, "LEFT", -8, 0)
   -- find a quest by name: every quest your faction and class can do, any zone (results on the left page)
   local find = CreateFrame("EditBox", "PintsQuestBookSearch", win, "InputBoxTemplate")
+  win.find = find
   find:SetSize(108, 20); find:SetAutoFocus(false); find:SetMaxLetters(40)
   find:SetPoint("RIGHT", win.groupBtn, "LEFT", -12, 0)
   find.ph = find:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); find.ph:SetPoint("LEFT", 2, 0); find.ph:SetText("Find a quest...")
