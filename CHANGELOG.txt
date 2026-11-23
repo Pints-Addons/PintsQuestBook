@@ -1,5 +1,21 @@
 Pint's Quest Book - Changelog
 
+v1.9.14
+- WoW Forever: Threading a Solution (Kal'tinzan, Mount Hyjal) waits for Blight No More to be done.
+- Tracker: the zone you're in goes to the top by the map you're on too, not only the zone's name (Mount Hyjal stayed
+  down the list on WoW Forever).
+- WoW Forever: Barkskin Burrow's quests (Windswept Wards and the rest in the Burrow) wait until the Burrow is at least
+  neutral to you. Reputation requirements are also checked on WoW Forever now - they always passed there before.
+- WoW Forever: a character's chronicle, diary, tasks and rare spawns could be filed twice - once under its realm and
+  once under a blank one, when the game hadn't named the realm yet at login - so achievements went missing (Rain Mon's
+  dungeon bosses). The book now uses the last realm it saw until the game names it, and merges the blank-realm
+  records back into the character's own.
+- WoW Forever: 65 of Forever's own quests had the wrong faction (Venom Maws in Mount Hyjal is Alliance-only, but showed
+  for the Horde too) - now as Wowhead's Forever quest lists have them (ForeverFactions.lua).
+- WoW Forever: 147 Classic quests had the wrong faction there - mostly ones the book had open to both that are one
+  faction's only, plus a few on the wrong side (Mathrengyl Bearwalker's druid quest is Alliance) - checked against
+  Wowhead's Forever quest lists at every level, so quests past level 60's list limit are covered too.
+
 v1.9.13
 - Quests you're past aren't offered any more: when a later step of a chain is done or in your log, the earlier step
   (a breadcrumb you skipped, or a first step WoW Forever no longer asks for) leaves the map and shows as passed - A Little

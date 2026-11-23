@@ -15,7 +15,7 @@ end
 ---------------------------------------------------------------- the quest arrow
 -- Left-click a quest in the tracker: the arrow points to the nearest place its unfinished objectives can be done, and to
 -- whoever takes it in once it's complete. It moves on by itself as you finish objectives. Click the quest again to stop.
-local function CharKey() return (GetRealmName() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
+local function CharKey() return (NS.Realm() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
 local function LogIndex(qid)
   for i = 1, (GetNumQuestLogEntries and GetNumQuestLogEntries() or 0) do
     local title, _, _, isHeader, _, isComplete, _, id = GetQuestLogTitle(i)
@@ -601,11 +601,23 @@ function NS.RefreshTracker()
     zones = z2
   end
   -- the zone you're in goes to the top (its header and everything under it)
-  local here = GetRealZoneText and GetRealZoneText()
-  local here2 = GetZoneText and GetZoneText()
+  -- (by the zone's name, and by the map you're on and the maps it sits in: WoW Forever's zone text can differ from
+  -- the log's header - Mount Hyjal stayed down the list)
+  local names = {}
+  local function Add(n) if type(n) == "string" and n ~= "" then names[n:lower()] = true end end
+  Add(GetRealZoneText and GetRealZoneText()); Add(GetZoneText and GetZoneText())
+  if C_Map and C_Map.GetBestMapForUnit then
+    local m = C_Map.GetBestMapForUnit("player")
+    for _ = 1, 4 do
+      local info = m and C_Map.GetMapInfo(m)
+      if not info then break end
+      if info.mapType and Enum and Enum.UIMapType and info.mapType < Enum.UIMapType.Zone then break end   -- (not the continent)
+      Add(info.name); m = info.parentMapID
+    end
+  end
   local from
   for k, row in ipairs(rows) do
-    if row.header and (row.header == here or row.header == here2) then from = k; break end
+    if row.header and names[row.header:lower()] then from = k; break end
   end
   if from then
     local to = #rows

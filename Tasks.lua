@@ -12,7 +12,7 @@ local GetItemCount = GetItemCount or (C_Item and C_Item.GetItemCount)
 local GetItemInfo = GetItemInfo or (C_Item and C_Item.GetItemInfo)
 
 local function db() return NS.DB and NS.DB() end
-local function CK() return (GetRealmName() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
+local function CK() return (NS.Realm() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
 local function List()
 	local d = db(); if not d then return {} end
 	d.tasks = d.tasks or {}

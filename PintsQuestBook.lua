@@ -543,10 +543,16 @@ local function Skill(id)
   return skills[SKILL_NAME[id] or ""] or 0
 end
 local function Rep(faction)
-  if not GetFactionInfoByID then return 0, 4 end
-  local ok, _, _, standing, _, _, value = pcall(GetFactionInfoByID, faction)
-  if not ok or not value then return 0, 4 end
-  return value, standing
+  if GetFactionInfoByID then
+    local ok, _, _, standing, _, _, value = pcall(GetFactionInfoByID, faction)
+    if ok and value then return value, standing end
+  end
+  -- (WoW Forever: the modern client's reputation list)
+  if C_Reputation and C_Reputation.GetFactionDataByID then
+    local ok, d = pcall(C_Reputation.GetFactionDataByID, faction)
+    if ok and d and d.currentStanding then return d.currentStanding, d.reaction or 4 end
+  end
+  return 0, 4
 end
 local function Cond(c, depth)
   local R = _G.PintsQuestReqs
@@ -2507,7 +2513,7 @@ end
 
 -- the day this character entered the world. The game doesn't tell addons a character's creation date, so the
 -- Storybook keeps the first day it met the character, and you can record the true date with /qb born.
-local function CK() return (GetRealmName() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
+local function CK() return (NS.Realm() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
 function QB.BornLine()
   db.born = db.born or {}; db.firstSeen = db.firstSeen or {}
   local ck = CK()
@@ -2590,7 +2596,7 @@ function QB.AbandonSelected()
 end
 
 -- celebrate finishing every quest in a zone (once per character per zone)
-local function CharKey() return (GetRealmName() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
+local function CharKey() return (NS.Realm() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
 local function CheckZoneComplete(zone, silent)
   if not zone or not D then return end
   local counts, done = ZoneStats()
@@ -2826,7 +2832,7 @@ ev:SetScript("OnEvent", function(self, event, arg1)
     if q then C_Timer.After(0.5, function() CheckZoneComplete(ZoneOf(q)) end) end
   elseif event == "PLAYER_LOGIN" then
     db.firstSeen = db.firstSeen or {}
-    local ck = (GetRealmName() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "")
+    local ck = (NS.Realm() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "")
     db.firstSeen[ck] = db.firstSeen[ck] or time()
     if NS.ApplyRecorded then NS.ApplyRecorded() end   -- quests checked in game replace the built-in data
     BuildIndex()

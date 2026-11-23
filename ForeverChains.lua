@@ -24,3 +24,5 @@ for id, prev in pairs({
 [99129]=99128,[99130]=99129,[99131]=99130,[99159]=99158,[99160]=99159,[99162]=99161,[99192]=99191,[99193]=99192,[99194]=99193,[99197]=99196,
 [99198]=99197,[99199]=99198,[99258]=99257,
 }) do if not C[id] then C[id] = prev end end
+-- steps found from guides rather than the givers (wow-professions.com: Threading a Solution needs Blight No More done)
+for id, prev in pairs({ [95769] = 95026 }) do if not C[id] then C[id] = prev end end

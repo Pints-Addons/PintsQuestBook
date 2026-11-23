@@ -2,6 +2,69 @@
 -- That client reads the quest log through C_QuestLog and no longer has the older functions the book uses.
 -- Each one below is filled in only when the game doesn't have it, so Classic Era keeps using its own.
 local Q = C_QuestLog
+-- The realm's name: WoW Forever can report it as blank for a moment at login, which filed a character's chronicle,
+-- diary, tasks and the rest a second time under no realm (Rain Mon's dungeon deeds went missing that way). The last
+-- realm seen stands in until the game says it again, and anything filed under the blank realm is merged back.
+do
+	local _, NSr = ...
+	function NSr.Realm()
+		local r = GetRealmName and GetRealmName()
+		if r and r ~= "" then
+			if PintsQuestBookDB then PintsQuestBookDB.lastRealm = r end
+			return r
+		end
+		return (PintsQuestBookDB and PintsQuestBookDB.lastRealm) or ""
+	end
+	-- src into dst: missing keys copied, lists appended, tables merged, numbers kept (the larger for "most" counts)
+	local function Merge(dst, src)
+		local seq = #src > 0 and #dst > 0
+		if seq then for _, v in ipairs(src) do dst[#dst + 1] = v end end
+		for k, v in pairs(src) do
+			if not (seq and type(k) == "number") then
+				local d = dst[k]
+				if d == nil then dst[k] = v
+				elseif type(d) == "table" and type(v) == "table" then Merge(d, v)
+				elseif type(d) == "number" and type(v) == "number" and (k == "maxMoney" or tostring(k):find("^max")) then dst[k] = math.max(d, v)
+				elseif type(d) == "number" and type(v) == "number" and (k == "t" or tostring(k):find("Seen$") or k == "born") then dst[k] = math.min(d, v) end
+			end
+		end
+	end
+	function NSr.MergeBlankRealm()
+		local db = PintsQuestBookDB
+		local realm = GetRealmName and GetRealmName()
+		if not (db and realm and realm ~= "") then return false end
+		local name = (GetUnitName and GetUnitName("player", false)) or UnitName("player")
+		if not name then return false end
+		local pairsToFix = {
+			{ "." .. name, realm .. "." .. name, { "deeds", "journal", "tasks", "celebrated", "firstSeen", "born", "arrowTarget", "questArrow" } },
+			{ name .. "-", name .. "-" .. realm, { "questColors", "rares" } },
+			{ name .. "-?", name .. "-" .. realm, { "questColors", "rares" } },
+		}
+		for _, p in ipairs(pairsToFix) do
+			for _, t in ipairs(p[3]) do
+				local tbl = db[t]
+				if type(tbl) == "table" and tbl[p[1]] ~= nil then
+					local blank, good = tbl[p[1]], tbl[p[2]]
+					if good == nil then tbl[p[2]] = blank
+					elseif type(good) == "table" and type(blank) == "table" then Merge(good, blank)
+					elseif type(good) == "number" and type(blank) == "number" then tbl[p[2]] = math.min(good, blank) end
+					tbl[p[1]] = nil
+				end
+			end
+		end
+		return true
+	end
+	local f = CreateFrame("Frame")
+	f:RegisterEvent("PLAYER_LOGIN")
+	f:SetScript("OnEvent", function()
+		local tries = 0
+		local function Try()
+			tries = tries + 1
+			if not NSr.MergeBlankRealm() and tries < 30 then C_Timer.After(2, Try) end
+		end
+		C_Timer.After(1, Try)
+	end)
+end
 if not Q or GetQuestLogTitle then return end
 
 local function IDAt(i) return i and i > 0 and Q.GetQuestIDForLogIndex and Q.GetQuestIDForLogIndex(i) or nil end

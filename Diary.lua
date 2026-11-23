@@ -11,7 +11,7 @@ local GetItemInfo = GetItemInfo or (C_Item and C_Item.GetItemInfo)
 local GetSpellInfo = GetSpellInfo or function(id) local i = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(id); return i and i.name end
 
 local function db() return NS.DB and NS.DB() end
-local function CK() return (GetRealmName() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
+local function CK() return (NS.Realm() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
 local function Me()
 	local d = db(); if not d then return nil end
 	d.journal = d.journal or {}

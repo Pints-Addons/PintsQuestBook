@@ -117,7 +117,7 @@ local function BuildArrow()
 end
 
 -- the waypoint is kept per character, so it survives /reload and logging out
-local function CK() return (GetRealmName() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
+local function CK() return (NS.Realm() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
 local function Saved(t)
 	local d = db(); if not d then return end
 	d.arrowTarget = d.arrowTarget or {}
