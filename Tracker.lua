@@ -15,6 +15,61 @@ end
 ---------------------------------------------------------------- the quest arrow
 -- Left-click a quest in the tracker: the arrow points to the nearest place its unfinished objectives can be done, and to
 -- whoever takes it in once it's complete. It moves on by itself as you finish objectives. Click the quest again to stop.
+-- timed quests: seconds left (nil when the quest has no timer)
+local function TimeLeft(qid, logIndex)
+  if C_QuestLog and C_QuestLog.GetTimeAllowed and qid then
+    local ok, total, elapsed = pcall(C_QuestLog.GetTimeAllowed, qid)
+    if ok and type(total) == "number" and total > 0 and type(elapsed) == "number" then return math.max(0, total - elapsed) end
+  end
+  if GetQuestTimers and GetQuestIndexForTimer and logIndex then
+    local t = { GetQuestTimers() }
+    for k, v in ipairs(t) do
+      if GetQuestIndexForTimer(k) == logIndex and tonumber(v) then return tonumber(v) end
+    end
+  end
+end
+local function TimerText(row)
+  if not row or not row.timerEnd then return "" end
+  local left = math.max(0, row.timerEnd - GetTime())
+  -- big, at the right of the quest and its first objective: a stopwatch and the time in bright colours (flashing in
+  -- the last 2 minutes)
+  local CLOCK = ""              -- (the stopwatch is its own texture beside the text, sized to fit the lines)
+  if left <= 0 then return CLOCK .. "|cffff3030TIME'S UP|r" end
+  local h, m, sec = math.floor(left / 3600), math.floor(left / 60) % 60, math.floor(left) % 60
+  local t = h > 0 and ("%d:%02d:%02d"):format(h, m, sec) or ("%d:%02d"):format(m, sec)
+  local col = (left < 120 and (math.floor(GetTime()) % 2 == 0 and "|cffff3030" or "|cffffffff")) or (left < 300 and "|cffff8c1a") or "|cff33e0ff"
+  return CLOCK .. col .. t .. "|r"
+end
+-- the countdown's own layer on a quest's line, so it draws over the objective line under it too
+local function PlaceTimer(b, row, tall)
+  if not (row and row.timerEnd and not row.obj) then
+    b.timerRow = nil
+    if b.timerF then b.timerF:Hide() end
+    return
+  end
+  if not b.timerF then
+    b.timerF = CreateFrame("Frame", nil, b)
+    b.timerF:SetFrameLevel(b:GetFrameLevel() + 10)
+    b.timerF:SetSize(1, 1)
+    b.timerFS = b.timerF:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    b.timerIcon = b.timerF:CreateTexture(nil, "OVERLAY")
+    b.timerIcon:SetTexture("Interface\\Icons\\INV_Misc_PocketWatch_01"); b.timerIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+  end
+  -- inside the quest's own block between the dashed lines: over the quest and its first objective when that line shows
+  -- (two lines tall), or just the quest's line when it's folded
+  -- (sized to stay inside the quest's dashed lines: two lines tall with its objective showing, one when folded)
+  local size = tall and (LINE_H * 2 - 12) or (LINE_H - 3)
+  local font = b.timerFS:GetFont()
+  if font then b.timerFS:SetFont(font, size, "OUTLINE") end
+  b.timerF:ClearAllPoints(); b.timerF:SetPoint("RIGHT", b, tall and "BOTTOMRIGHT" or "RIGHT", -6, 0)
+  b.timerFS:ClearAllPoints(); b.timerFS:SetPoint("RIGHT", b.timerF, "RIGHT", 0, 0)
+  local isz = tall and (LINE_H * 2 - 8) or (LINE_H - 2)
+  b.timerIcon:SetSize(isz, isz)
+  b.timerIcon:ClearAllPoints(); b.timerIcon:SetPoint("RIGHT", b.timerFS, "LEFT", -3, 0)
+  b.timerFS:SetText(TimerText(row))
+  b.timerF:Show()
+  b.timerRow = row
+end
 local function CharKey() return (NS.Realm() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "") end
 local function LogIndex(qid)
   for i = 1, (GetNumQuestLogEntries and GetNumQuestLogEntries() or 0) do
@@ -380,6 +435,32 @@ local function UseText(bag, slot)
   end
   return table.concat(lines, " ")
 end
+-- a quest item that runs out (Flawed Power Stone: "Duration: 30 min"): seconds left, read from its tooltip
+local itemEnd = {}              -- qid -> when it runs out (kept steady: the tooltip only counts whole minutes)
+local function ItemTimeLeft(itemID)
+  local GetInfo = C_Container and C_Container.GetContainerItemInfo
+  local NumSlots = (C_Container and C_Container.GetContainerNumSlots) or GetContainerNumSlots
+  for bag = 0, 4 do
+    for slot = 1, (NumSlots and NumSlots(bag) or 0) do
+      local id
+      if GetInfo then local info = GetInfo(bag, slot); id = info and info.itemID else id = GetContainerItemID and GetContainerItemID(bag, slot) end
+      if id == itemID then
+        local text = UseText(bag, slot)
+        local d = text:match("Duration:%s*([^|]-)%s*[A-Z]") or text:match("Duration:%s*(.*)")
+        if not d then return end
+        local secs = 0
+        for n, unit in d:gmatch("(%d+)%s*(%a+)") do
+          n = tonumber(n); unit = unit:lower()
+          if unit:find("^day") then secs = secs + n * 86400
+          elseif unit:find("^hour") or unit:find("^hr") then secs = secs + n * 3600
+          elseif unit:find("^min") then secs = secs + n * 60
+          elseif unit:find("^sec") then secs = secs + n end
+        end
+        return secs > 0 and secs or nil
+      end
+    end
+  end
+end
 -- qid -> { id, icon } for the quests in your log
 local function QuestItems()
   local out = {}
@@ -394,6 +475,11 @@ local function QuestItems()
       else
         local w = Words(title)
         for j = 1, (GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(i) or 0) do Words((GetQuestLogLeaderBoard(j, i)), w) end
+        -- and the book's own objective text ("Grab a Flawed Power Stone. Bring it to the Altar of Fire..."): items the
+        -- game's objective lines never name still find their quest
+        local D = NS.Data and NS.Data()
+        local bq = D and D.quests and D.quests[qid]
+        if bq and type(bq[15]) == "string" then Words(bq[15], w) end
         want[#want + 1] = { qid, w }
       end
     end
@@ -559,7 +645,17 @@ function NS.RefreshTracker()
       local gap = ""
       local head = pre .. gap .. ("|cff%02x%02x%02x[%d] %s|r"):format(r * 255, g * 255, b * 255, level or 0, title)
       local doneTag = (done and not failed) and ("  |cff40ff40(Complete)|r" .. (folded and " |cff40ff40+|r" or "")) or ""
-      rows[#rows + 1] = { qid = qid, logIndex = i, title = title, chain = #later, head = (done and not failed) and head or nil, item = qItems[qid], pre = pre,
+      local secs = (not failed) and TimeLeft(qid, i) or nil      -- (a finished one still has to be handed in in time)
+      -- no quest timer, but its item runs out (The Demon Seed's Flawed Power Stone: 30 minutes)
+      if not secs and not done and qItems[qid] then
+        local s2 = ItemTimeLeft(qItems[qid].id)
+        if s2 then
+          local e = GetTime() + s2
+          if itemEnd[qid] and math.abs(itemEnd[qid] - e) < 90 then e = itemEnd[qid] end
+          itemEnd[qid] = e; secs = e - GetTime()
+        end
+      end
+      rows[#rows + 1] = { qid = qid, logIndex = i, title = title, chain = #later, timerEnd = secs and (GetTime() + secs) or nil, head = (done and not failed) and head or nil, item = qItems[qid], pre = pre,
         doneTag = (done and not failed) and doneTag or nil,
         text = head .. (failed and "  |cffff2020(Failed)|r" or doneTag) .. (#later > 0 and ("  |cff8080a0+" .. #later .. "|r") or "") }
       local nb = GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(i) or 0
@@ -694,16 +790,17 @@ function NS.RefreshTracker()
       -- zone names in blue (folded ones a softer blue)
       b.text:SetText((col and "|cff7f9fd0+ " or "|cff4fa8ff") .. row.header .. "|r")
       b.tog:Hide()
+      PlaceTimer(b, nil)
     elseif row.chain and row.chain > 0 then
       b.tog.qid = row.qid
       b.tog.tex:SetTexture(d.trackerExpanded[row.qid] and "Interface\\Buttons\\UI-MinusButton-Up" or "Interface\\Buttons\\UI-PlusButton-Up")
       b.tog:Show()
       b.text:SetPoint("LEFT", 16, 0); b.text:SetPoint("RIGHT", 0, 0)
-      b.text:SetText(row.text)
+      b.text:SetText(row.text); PlaceTimer(b, row, rows[k + 1] and rows[k + 1].obj and rows[k + 1].qid == row.qid and shown < maxLines)
     else
       b.tog:Hide()
       b.text:SetPoint("LEFT", row.obj and 40 or 16, 0); b.text:SetPoint("RIGHT", 0, 0)
-      b.text:SetText(row.text)
+      b.text:SetText(row.text); PlaceTimer(b, row, rows[k + 1] and rows[k + 1].obj and rows[k + 1].qid == row.qid and shown < maxLines)
     end
     if row.item and not row.obj and not row.future then
       -- the item button hangs just outside the tracker's left edge, level with the quest (the list isn't pushed over)
@@ -764,4 +861,11 @@ f:SetScript("OnEvent", function(_, event)
     if NS.RefreshMap then NS.RefreshMap() end
     if PintsQuestBook and PintsQuestBook.Refresh then PintsQuestBook.Refresh() end
   end)
+end)
+
+-- the countdown on timed quests ticks every second (just those lines' text)
+C_Timer.NewTicker(1, function()
+  for _, b in ipairs(btns) do
+    if b.timerRow and b:IsShown() and b.timerFS then b.timerFS:SetText(TimerText(b.timerRow)) end
+  end
 end)

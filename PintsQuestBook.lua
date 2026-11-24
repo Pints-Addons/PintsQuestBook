@@ -470,6 +470,14 @@ local function RefreshStatus()
     if ok and type(t) == "table" then for k in pairs(t) do completed[k] = true end end
   end
 end
+-- handed in before by this character (repeatable quests stay "available" to the game after you do them)
+function NS.DoneBefore(id)
+  local d = NS.DB and NS.DB()
+  local t = d and d.turnedIn
+  if not t then return false end
+  local ck = (NS.Realm() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "")
+  return (t[ck] and t[ck][id]) and true or false
+end
 local function IsDone(id)
   if completed[id] then return true end
   local c = doneCache[id]
@@ -592,15 +600,26 @@ local function PastIt(id, depth)
   end
   return false
 end
+-- quests only offered while another is in your log (they help finish it): once that one's handed in they're pointless,
+-- and before you have it they aren't offered. [quest] = the quest it helps
+local DURING = {
+  [813] = 812,      -- Finding the Antidote: only while Need for a Cure is in your log (Rhinag's 45-minute antidote)
+}
+NS.DURING = DURING
 local function Status(id)
   if IsDone(id) then return "done" end
   if inLog[id] then return inLog[id] == "done" and "ready" or "log" end
+  local host = DURING[id]
+  if host then
+    if IsDone(host) then return "passed" end
+    if not inLog[host] then return "locked" end
+  end
   if PastIt(id) then return "passed" end
   local q = Q(id)
   if (q[3] or 0) > UnitLevel("player") then return "later" end
   -- holiday quests (Lunar Festival elders, Darkmoon Faire, Children's Week...) can't be taken outside their event
   if EVENT_SORT[q[4] or 0] and not db.showEvents and not ACTIVE_SORT[q[4]] then return "event" end
-  if q[7] > 0 and valid[q[7]] and not IsDone(q[7]) then return "locked" end
+  if q[7] > 0 and valid[q[7]] and not IsDone(q[7]) and not DURING[id] then return "locked" end
   if not MeetsReqs(id) then return "locked" end
   return "available"
 end
@@ -2827,7 +2846,13 @@ ev:SetScript("OnEvent", function(self, event, arg1)
   elseif event == "PLAYER_LEVEL_UP" then
     if win and win:IsShown() then C_Timer.After(1, Render) end
   elseif event == "QUEST_TURNED_IN" then
-    if arg1 then completed[arg1] = true; doneCache[arg1] = true end
+    if arg1 then
+      completed[arg1] = true; doneCache[arg1] = true
+      -- remembered per character: a quest that's offered again after this is a repeatable one you've done (blue "!")
+      local ck = (NS.Realm() or "") .. "." .. ((GetUnitName and GetUnitName("player", false) or UnitName("player")) or "")
+      db.turnedIn = db.turnedIn or {}; db.turnedIn[ck] = db.turnedIn[ck] or {}
+      db.turnedIn[ck][arg1] = time()
+    end
     local q = arg1 and Q(arg1)
     if q then C_Timer.After(0.5, function() CheckZoneComplete(ZoneOf(q)) end) end
   elseif event == "PLAYER_LOGIN" then

@@ -197,6 +197,7 @@ local function AddBand(g, q)
 end
 local function TintBang(tex, p)
   if p.kind == "qavail" and p.low then tex:SetDesaturated(true); tex:SetVertexColor(0.85, 0.85, 0.85)
+  elseif p.kind == "qavail" and p.again then tex:SetDesaturated(true); tex:SetVertexColor(0.35, 0.7, 1)
   elseif p.kind == "qavail" and p.band then local c = BANG[p.band]; tex:SetDesaturated(false); tex:SetVertexColor(c[1], c[2], c[3])
   else tex:SetDesaturated(false); tex:SetVertexColor(1, 1, 1) end
 end
@@ -247,6 +248,9 @@ local function QuestPins(mapID, m, continent)
     if q.checked or (q.wh and not q.whMoved) then g.unv = false end   -- (WoW Forever: faded until one of their quests is confirmed)
     AddBand(g, q)
     if kind ~= "qavail" or not NS.IsTrivial(q[2]) then g.low = false end
+    -- a giver whose quests here are all repeatable ones you've already done gets a blue "!"
+    if g.again == nil then g.again = true end
+    if kind ~= "qavail" or not (NS.DoneBefore and NS.DoneBefore(id)) then g.again = false end
   end
   for id in pairs(NS.Valid) do
     local q = D.quests[id]
@@ -386,7 +390,7 @@ function PintsStorybookPinMixin:OnMouseEnter()
       local q = D.quests[id]
       local note = (FOREVER and not q.checked and not (q.wh and not q.whMoved)) and "  |cff808080(not seen in game yet)|r" or ""
       if p.kind == "qavail" and NS.IsTrivial(q[2]) then GameTooltip:AddLine(("[%d] %s"):format(q[2] or 0, q[1]) .. note, 0.6, 0.6, 0.6)
-      else GameTooltip:AddLine(("[%d] %s"):format(q[2] or 0, q[1]) .. note, 1, 1, 1) end
+      else GameTooltip:AddLine(("[%d] %s"):format(q[2] or 0, q[1]) .. note .. ((NS.DoneBefore and NS.DoneBefore(id)) and "  |cff59b3ff(repeatable - done before)|r" or ""), 1, 1, 1) end
     end
     if p.unv then GameTooltip:AddLine("From Classic's quest list - WoW Forever may have moved or changed this.", 0.6, 0.6, 0.6, true) end
     GameTooltip:AddLine(C .. "click: open in the Quest Book   " .. C .. "Shift-click: arrow", 0.5, 0.5, 0.5)
@@ -402,6 +406,10 @@ function PintsStorybookPinMixin:OnMouseEnter()
       labels[#labels + 1] = LABEL[c] or (prof and (prof .. " Trainer" .. (tier and (" - " .. tier .. " (up to " .. TIER_TOP[tier] .. ")") or ""))) or c
     end
     if i.cats[1] ~= "mail" then GameTooltip:AddLine(table.concat(labels, ", "), 1, 1, 1, true) end
+    -- a weapon master: what they'd teach this character (from Pint's Class Training)
+    local PTr = _G.PintsTraining
+    local wl = PTr and PTr.MasterLines and PTr.MasterLines(i.name)
+    if wl then for _, l in ipairs(wl) do GameTooltip:AddLine(l[1], l[2], l[3], l[4], true) end end
     GameTooltip:AddLine(("%.1f, %.1f"):format(p.x * 100, p.y * 100), 0.6, 0.6, 0.6)
     if p.wx then GameTooltip:AddLine(C .. "click: point the arrow here", 0.5, 0.5, 0.5) end
   end

@@ -1,5 +1,15 @@
 Pint's Quest Book - Changelog
 
+v1.9.15
+- Map: a repeatable quest you've already handed in (Flawed Power Stone) gets a blue "!" instead of a yellow one - grey once
+  it's low-level - and its tooltip says "repeatable - done before". Hand-ins are remembered per character from now on.
+- Finding the Antidote is only offered while Need for a Cure is in your log; once that's handed in it shows as passed
+  (hidden with Hide completed) instead of available.
+- Tracker: timed quests show a big countdown with a stopwatch at the right, as tall as the quest and its first
+  objective (Need for a Cure: 45 minutes) - bright blue, orange under 5 minutes, flashing red under 2.
+  Quests whose item runs out get one too, from the item's Duration (The Demon Seed's Flawed Power Stone: 30 minutes).
+- Map: a weapon master's pin says which weapon skills they'd teach this character (with Pint's Class Training).
+
 v1.9.14
 - WoW Forever: Threading a Solution (Kal'tinzan, Mount Hyjal) waits for Blight No More to be done.
 - Tracker: the zone you're in goes to the top by the map you're on too, not only the zone's name (Mount Hyjal stayed

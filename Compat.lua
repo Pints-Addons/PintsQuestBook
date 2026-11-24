@@ -7,9 +7,17 @@ local Q = C_QuestLog
 -- realm seen stands in until the game says it again, and anything filed under the blank realm is merged back.
 do
 	local _, NSr = ...
-	function NSr.Realm()
+	local function Ok(r) return type(r) == "string" and r ~= "" and r ~= "?" and not (type(issecretvalue) == "function" and issecretvalue(r)) end
+	-- (Pint's Alts' last realm too: WoW Forever can keep the realm hidden for a whole session)
+	local function Known()
 		local r = GetRealmName and GetRealmName()
-		if r and r ~= "" then
+		if Ok(r) then return r end
+		r = PintsLedgerDB and PintsLedgerDB.lastRealm
+		if Ok(r) then return r end
+	end
+	function NSr.Realm()
+		local r = Known()
+		if r then
 			if PintsQuestBookDB then PintsQuestBookDB.lastRealm = r end
 			return r
 		end
@@ -31,8 +39,8 @@ do
 	end
 	function NSr.MergeBlankRealm()
 		local db = PintsQuestBookDB
-		local realm = GetRealmName and GetRealmName()
-		if not (db and realm and realm ~= "") then return false end
+		local realm = Known() or (db and db.lastRealm)
+		if not (db and Ok(realm)) then return false end
 		local name = (GetUnitName and GetUnitName("player", false)) or UnitName("player")
 		if not name then return false end
 		local pairsToFix = {
