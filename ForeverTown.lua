@@ -230,6 +230,33 @@ local ADD = {
 [254717]={"Vindael","Blacksmith",0,"repair,v:trade",0,{2652,42,78.8,2652,42.2,78.4}},
 [255701]={"Maralus","Trade Goods",0,"v:trade",0,{2652,42.8,78.8,2652,43,78.4}},
 [255704]={"Arondel","Drink Vendor",0,"v:drink",0,{2652,51.4,72.4,2652,51.4,72.6}},
+-- moonwells (WoW Forever Atlas, wowforever.gg, November 2026): where tailors make Mooncloth. Not people, so they're
+-- numbered below zero, apart from the game's NPC ids
+[-1]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1438,56.02,61.99}},
+[-2]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1438,42.41,67.07}},
+[-3]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1438,38.44,34.06}},
+[-4]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1438,59.95,33.05}},
+[-5]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1438,63.36,58.1}},
+[-6]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1438,47.24,63.49}},
+[-7]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1440,62.07,51.04}},
+[-8]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1440,60.2,72.91}},
+[-9]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1440,53.76,46.02}},
+[-10]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1440,59.31,59.96}},
+[-11]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1444,32.56,43.91}},
+[-12]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1444,57.97,44.49}},
+[-13]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1444,89.55,46.32}},
+[-14]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1444,60.2,46.25}},
+[-15]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1453,35.49,65.7}},
+[-16]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1450,46.17,45.35}},
+[-17]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1450,52.5,41.46}},
+[-18]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1450,48.64,32.97}},
+[-19]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1439,37.8,44.04}},
+[-20]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1448,35.15,59.79}},
+[-21]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1448,32.35,66.54}},
+[-22]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1431,49.2,33.29}},
+[-23]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1442,36.82,7.9}},
+[-24]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1451,48.96,37.65}},
+[-25]={"Moonwell","Mooncloth is made here",0,"moonwell",0,{1443,67.67,9.84}},
 }
 local f = CreateFrame("Frame")
 f:RegisterEvent("PLAYER_LOGIN")

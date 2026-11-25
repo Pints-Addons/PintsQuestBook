@@ -1,5 +1,10 @@
 Pint's Quest Book - Changelog
 
+v1.9.16
+- WoW Forever: moonwells on the map and minimap (25 of them - Teldrassil, Ashenvale, Darkshore, Felwood, Moonglade,
+  Feralas, Desolace, Stonetalon, Silithus, Duskwood and Stormwind's park), where tailors make Mooncloth. Tick or untick
+  Moonwell under Map icons > Townsfolk. From the WoW Forever Atlas (wowforever.gg).
+
 v1.9.15
 - Map: a repeatable quest you've already handed in (Flawed Power Stone) gets a blue "!" instead of a yellow one - grey once
   it's low-level - and its tooltip says "repeatable - done before". Hand-ins are remembered per character from now on.

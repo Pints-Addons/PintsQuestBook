@@ -28,7 +28,7 @@ local ICON = {
   repair = "Interface\\Icons\\Trade_BlackSmithing", inn = "Interface\\Icons\\INV_Misc_Rune_01", mail = "Interface\\Icons\\INV_Letter_15",
   class = "Interface\\Icons\\INV_Misc_Book_11", weapon = "Interface\\Icons\\INV_Sword_04", ah = "Interface\\Icons\\INV_Misc_Coin_02",
   bank = "Interface\\Icons\\INV_Misc_Bag_10", flight = "Interface\\TaxiFrame\\UI-Taxi-Icon-Green", battle = "Interface\\Icons\\INV_Jewelry_Necklace_21",
-  stable = "Interface\\Icons\\Ability_Hunter_BeastTaming", spirit = "Interface\\Icons\\Spell_Holy_Resurrection",
+  stable = "Interface\\Icons\\Ability_Hunter_BeastTaming", moonwell = "Interface\\Icons\\INV_Fabric_MoonRag_01", spirit = "Interface\\Icons\\Spell_Holy_Resurrection",
   ["v:ammo"] = "Interface\\Icons\\INV_Ammo_Arrow_02", ["v:bags"] = "Interface\\Icons\\INV_Misc_Bag_08", ["v:drink"] = "Interface\\Icons\\INV_Drink_07",
   ["v:food"] = "Interface\\Icons\\INV_Misc_Food_15", ["v:poisons"] = "Interface\\Icons\\Trade_BrewPoison", ["v:potions"] = "Interface\\Icons\\INV_Potion_51",
   ["v:reagents"] = "Interface\\Icons\\INV_Misc_Dust_02", ["v:trade"] = "Interface\\Icons\\INV_Fabric_Linen_01",
@@ -44,10 +44,11 @@ local ICON = {
 local LABEL = {
   repair = "Repair", inn = "Innkeeper", mail = "Mailbox", class = "Class Trainer", weapon = "Weapon Master", ah = "Auctioneer",
   bank = "Banker", flight = "Flight Master", battle = "Battlemaster", stable = "Stable Master", spirit = "Spirit Healer",
+  moonwell = "Moonwell",
   ["v:ammo"] = "Ammo", ["v:bags"] = "Bags", ["v:drink"] = "Drink", ["v:food"] = "Food", ["v:poisons"] = "Poisons",
   ["v:potions"] = "Potions", ["v:reagents"] = "Reagents", ["v:trade"] = "Trade Goods",
 }
-NS.MAP_TOWN = { "repair", "inn", "mail", "class", "weapon", "ah", "bank", "flight", "battle", "stable" }
+NS.MAP_TOWN = { "repair", "inn", "mail", "class", "weapon", "ah", "bank", "flight", "battle", "stable", "moonwell" }
 NS.MAP_PROF = { "Alchemy", "Blacksmithing", "Enchanting", "Engineering", "Herbalism", "Leatherworking", "Mining", "Skinning",
   "Tailoring", "Cooking", "First Aid", "Fishing", "Riding" }
 NS.MAP_VEND = { "v:ammo", "v:bags", "v:drink", "v:food", "v:poisons", "v:potions", "v:reagents", "v:trade" }
@@ -61,7 +62,7 @@ function NS.IsFlowerQuest(q) return q and FLOWERS[q[1]] or false end
 function NS.MapDefaults(d)
   d.map = d.map or {}
   local m = d.map
-  local on = { repair = true, inn = true, mail = true, class = true, flight = true, qavail = true, qturn = true }
+  local on = { repair = true, inn = true, mail = true, class = true, flight = true, qavail = true, qturn = true, moonwell = true }
   for _, k in ipairs(NS.MAP_TOWN) do if m[k] == nil then m[k] = on[k] or false end end
   for _, k in ipairs(NS.MAP_VEND) do if m[k] == nil then m[k] = (k == "v:reagents") end end   -- reagent vendors on
   m.prof = m.prof or {}
