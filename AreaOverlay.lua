@@ -21,6 +21,41 @@ local function On()
   return m and m.enabled and m.qareas
 end
 
+-- Quest givers who walk a beat (Gordo, on the road to Brill): while one of their quests is waiting for you, the path
+-- they walk is shaded in the "!" gold; the same for one who takes a quest you've finished. (Data: Patrols.lua.)
+local PATROL_YARDS = 14
+local function Patrols()
+  local out = {}
+  local P, d = _G.PintsQuestPatrols, db()
+  local m = d and d.map
+  if not (P and On() and NS.Status and NS.Valid) then return out end
+  local D = NS.Data and NS.Data()
+  local function add(t, give)
+    for qid, i in pairs(t) do
+      if NS.Valid[qid] and P.paths[i] then
+        local st, q = NS.Status(qid), D and D.quests[qid]
+        local ok
+        if give then ok = m.qavail and st == "available" and (m.qlow or not (q and NS.IsTrivial and NS.IsTrivial(q[2])))
+        else ok = m.qturn and st == "ready" end
+        if ok then
+          local o = out[i]
+          if not o then o = { path = P.paths[i], quests = {} }; out[i] = o end
+          local drop = give and P.drop and P.drop[qid]
+          o.quests[#o.quests + 1] = ("[%d] %s"):format(q and q[2] or 0, (q and q[1]) or ("quest " .. qid))
+            .. (drop and "  |cffa0a0a0(its drop starts the quest)|r" or give and "  |cffa0a0a0(to pick up)|r" or "  |cffa0a0a0(to hand in)|r")
+        end
+      end
+    end
+  end
+  add(P.give, true); add(P.take, false)
+  for _, o in pairs(out) do
+    table.sort(o.quests)
+    o.tip = { qid = "patrol:" .. o.path[1], title = o.path[1] .. " walks this gold path", obj = "", lines = o.quests,
+      note = "Follow it to find them.", r = 1, g = 0.82, b = 0 }
+  end
+  return out
+end
+
 ---------------------------------------------------------------- world map
 local overlay, mapTex, mapBlobs = nil, {}, {}
 local function Canvas()
@@ -103,12 +138,17 @@ function NS.DrawMapAreas()
       local last
       for _, p in ipairs(hits) do
         if p.title ~= last then GameTooltip:AddLine(p.title, p.r, p.g, p.b); last = p.title end
-        local txt = p.obj
-        for j = 1, (p.index and GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(p.index) or 0) do
-          local t = GetQuestLogLeaderBoard(j, p.index)
-          if type(t) == "string" and p.obj and t:find(p.obj, 1, true) then txt = t; break end
+        if p.lines then
+          for _, l in ipairs(p.lines) do GameTooltip:AddLine("     - " .. l, 1, 1, 1) end
+          if p.note then GameTooltip:AddLine("     " .. p.note, 0.6, 0.6, 0.6) end
+        else
+          local txt = p.obj
+          for j = 1, (p.index and GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(p.index) or 0) do
+            local t = GetQuestLogLeaderBoard(j, p.index)
+            if type(t) == "string" and p.obj and t:find(p.obj, 1, true) then txt = t; break end
+          end
+          if txt then GameTooltip:AddLine("     - " .. txt, 1, 1, 1) end
         end
-        if txt then GameTooltip:AddLine("     - " .. txt, 1, 1, 1) end
       end
       GameTooltip:Show()
       self.tip = true
@@ -133,6 +173,25 @@ function NS.DrawMapAreas()
         t:Show()
         mapBlobs[n] = { x, y, rx, ry, p }
       end
+      -- patrolling quest givers' paths
+      local px, py = PATROL_YARDS / zw * w, PATROL_YARDS / zh * h
+      for _, o in pairs(Patrols()) do
+        local p = o.path
+        for k = 3, #p - 1, 2 do
+          local _, mid, x, y = NS.Locate(p[2], p[k], p[k + 1])
+          if mid and mid ~= mapID and NS.MapProject then x, y = NS.MapProject(mid, x, y, mapID); mid = x and mapID end
+          if mid == mapID then
+            n = n + 1
+            local t = MapTex(n)
+            x, y = x / 100 * w, y / 100 * h
+            t:ClearAllPoints(); t:SetPoint("CENTER", overlay, "TOPLEFT", x, -y)
+            t:SetSize(px * 2, py * 2)
+            t:SetVertexColor(1, 0.82, 0, MAP_ALPHA)
+            t:Show()
+            mapBlobs[n] = { x, y, px, py, o.tip }
+          end
+        end
+      end
     end
   end
   for i = n + 1, #mapTex do mapTex[i]:Hide() end
@@ -152,6 +211,14 @@ local MINI_YARDS = {
 -- all unfinished-objective spots of your quests on this continent (refreshed as the quest log changes)
 local function Collect(cont)
   wipe(spots)
+  for _, o in pairs(Patrols()) do
+    local p = o.path
+    if p[2] == cont then
+      for k = 3, #p - 1, 2 do
+        spots[#spots + 1] = { p[k], p[k + 1], 1, 0.82, 0, title = o.tip.title, obj = o.tip.obj, lines = o.tip.lines, note = o.tip.note, rad = PATROL_YARDS }
+      end
+    end
+  end
   if not On() or not NS.LogQuests then return end
   local A = _G.PintsQuestAreas; if not A then return end
   for qid, q in pairs(NS.LogQuests()) do
@@ -205,6 +272,9 @@ local function MiniTex(i)
   return t
 end
 
+-- the minimap's hover tooltip (our own, so nothing else that holds the game's tooltip can block it)
+local MT = CreateFrame("GameTooltip", "PintsQuestBookMiniTip", UIParent, "GameTooltipTemplate")
+MT:SetFrameStrata("TOOLTIP")
 local function DrawMini()
   if not Minimap or not Minimap:IsVisible() then return end
   if not mini then
@@ -268,8 +338,9 @@ local function DrawMini()
         n = n + 1
         local t = MiniTex(n)
         t:ClearAllPoints(); t:SetPoint("CENTER", Minimap, "CENTER", x / radius * half, y / radius * half)
-        t:SetSize(size, size)
-        t:SetVertexColor(s[3], s[4], s[5], alpha)
+        local sz = s.rad and size * s.rad / R_YARDS or size
+        t:SetSize(sz, sz)
+        t:SetVertexColor(s[3], s[4], s[5], s.rad and math.min(1, alpha * 1.5) or alpha)
         t.sp = s
         t:Show()
       end
@@ -306,27 +377,32 @@ local function DrawMini()
       end
     end
     if #list > 0 then
-      local owner = GameTooltip:IsShown() and GameTooltip:GetOwner()
-      if not owner or owner == mini or (owner == Minimap and GameTooltip:NumLines() == 0) then
-        GameTooltip:SetOwner(mini, "ANCHOR_CURSOR")
+      -- (our own tooltip: the game's can be held by the minimap itself, which kept ours from showing)
+      local busy = GameTooltip:IsShown() and GameTooltip:GetOwner() ~= Minimap and GameTooltip:GetOwner() ~= mini and GameTooltip:NumLines() > 0
+      if not busy then
+        MT:SetOwner(mini, "ANCHOR_CURSOR")
         local last
         for _, sp in ipairs(list) do
-          if sp.title ~= last then GameTooltip:AddLine(sp.title, sp[3], sp[4], sp[5]); last = sp.title end
-          -- the objective with its progress, from your quest log
-          local txt = sp.obj
-          for j = 1, (GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(sp.index) or 0) do
+          if sp.title ~= last then MT:AddLine(sp.title, sp[3], sp[4], sp[5]); last = sp.title end
+          -- a walker's path: who and which quests; otherwise the objective with its progress, from your quest log
+          if sp.lines then
+            for _, l in ipairs(sp.lines) do MT:AddLine("     - " .. l, 1, 1, 1) end
+            if sp.note then MT:AddLine("     " .. sp.note, 0.6, 0.6, 0.6) end
+          end
+          local txt = (not sp.lines) and sp.obj
+          for j = 1, (sp.index and GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(sp.index) or 0) do
             local t = GetQuestLogLeaderBoard(j, sp.index)
             if type(t) == "string" and sp.obj and t:find(sp.obj, 1, true) then txt = t; break end
           end
-          if txt then GameTooltip:AddLine("     - " .. txt, 1, 1, 1) end
+          if txt then MT:AddLine("     - " .. txt, 1, 1, 1) end
         end
-        GameTooltip:Show()
+        MT:Show()
         mini.tip = true
-      end
+      elseif mini.tip then mini.tip = nil; MT:Hide() end
       return
     end
   end
-  if mini and mini.tip then mini.tip = nil; if GameTooltip:GetOwner() == mini then GameTooltip:Hide() end end
+  if mini and mini.tip then mini.tip = nil; MT:Hide() end
 end
 
 local f = CreateFrame("Frame")
@@ -337,7 +413,7 @@ f:SetScript("OnUpdate", function(self, el)
   self.t = 0
   if PintsQuestBookDB then DrawMini() end
 end)
-for _, e in ipairs({ "QUEST_LOG_UPDATE", "QUEST_TURNED_IN", "ZONE_CHANGED_NEW_AREA", "PLAYER_ENTERING_WORLD" }) do f:RegisterEvent(e) end
+for _, e in ipairs({ "QUEST_LOG_UPDATE", "QUEST_TURNED_IN", "ZONE_CHANGED_NEW_AREA", "PLAYER_ENTERING_WORLD", "PLAYER_LEVEL_UP" }) do f:RegisterEvent(e) end
 f:SetScript("OnEvent", function()
   C_Timer.After(0.5, function()
     spotsAt = nil

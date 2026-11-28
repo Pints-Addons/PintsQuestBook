@@ -1,5 +1,17 @@
 Pint's Quest Book - Changelog
 
+v1.9.17
+- WoW Forever: quests only one Skyborne people can take are left off for the other - Stolen Supplies (Danarii
+  Bellowveil, Zephras Isle) is High Order only, so a Windshaper no longer sees it.
+- Quest givers who walk a patrol (Gordo on the road to Brill, Rexxar in Desolace - 52 in all,
+  from the Classic database) have their path shaded in gold on the world map and minimap while one of their quests is waiting for you.
+- Quests that start from a creature's drop - Owatanka, Lakota'mani and Washte Pawne in the Barrens, Sharptalon,
+  Shadumbra, Ursangous, Gazz'uz, Tideress and the rest (20 in all) - get a "!" where that creature spawns, and the
+  path of the ones that walk a set route is shaded in gold, while the quest is still open to you.
+- Hovering a gold path (map or minimap) says whose it is and which quests: "Gordo walks this gold path", each quest
+  with its level and whether it's to pick up, to hand in, or starts from their drop.
+- WoW Forever: The Adventurer (Executor Arren, Deathknell) waits until The Scarlet Crusade is handed in.
+
 v1.9.16
 - WoW Forever: moonwells on the map and minimap (25 of them - Teldrassil, Ashenvale, Darkshore, Felwood, Moonglade,
   Feralas, Desolace, Stonetalon, Silithus, Duskwood and Stormwind's park), where tailors make Mooncloth. Tick or untick

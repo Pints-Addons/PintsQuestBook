@@ -657,6 +657,17 @@ function NS.WowheadNote(q)
   for k in (q.wh or ""):gmatch("[%w_]+") do local w = WH_WHAT[k]; if w and not seen[w] then seen[w] = true; what[#what + 1] = w end end
   return "On WoW Forever (Wowhead)" .. (#what > 0 and (" - changed: " .. table.concat(what, ", ")) or "")
 end
+-- quests only one Skyborne people can take (Wowhead's "Race:" line): [quest] = "High Order" or "Windshaper"
+local RACE_ONLY = {
+  [92551] = "High Order",   -- Stolen Supplies (Danarii Bellowveil, Zephras Isle)
+}
+NS.RACE_ONLY = RACE_ONLY
+local function RaceOK(id)
+  local need = RACE_ONLY[id]
+  if not need then return true end
+  local r = (UnitRace("player") or ""):lower():gsub("[%s']", "")
+  return r:find(need:lower():gsub("[%s']", ""), 1, true) ~= nil
+end
 local function BuildIndex()
   D = _G.PintsQuestData
   if not D then return end
@@ -667,7 +678,7 @@ local function BuildIndex()
     local okClass = q[6] == 0 or band(q[6], cbit) ~= 0
     local z = NS.ZONES[ZoneOf(q)]
     if z and z[5] == "class" and z[6] ~= select(2, UnitClass("player")) then okClass = false end
-    if okFac and okClass and not (db.hidden and db.hidden[id]) then valid[id] = true end
+    if okFac and okClass and (RaceOK(id) or db.otherFaction) and not (db.hidden and db.hidden[id]) then valid[id] = true end
   end
   for id in pairs(valid) do
     local p = D.quests[id][7]

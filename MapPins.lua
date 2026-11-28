@@ -159,6 +159,12 @@ end
 -- checked in game (the recorder) get icons, unless "unchecked quests" is ticked. A giver who didn't offer a quest
 -- they're listed for (the recorder notes that) never shows it.
 local FOREVER = type(issecretvalue) == "function"
+-- a quest that starts from a creature's drop (Owatanka's Tailspike): where that creature spawns (Patrols.lua), or nil
+local function DropSpots(id, q)
+  if q[18] and q[18] >= 0 then return end
+  local P = _G.PintsQuestPatrols
+  return P and P.drop and P.drop[id]
+end
 local function PinOK(q, m)
   if q.notHere then return false end
   local seen = q.checked or (q.wh and not q.whMoved)   -- (seen in game, or on Wowhead's Forever list with the same giver)
@@ -259,7 +265,9 @@ local function QuestPins(mapID, m, continent)
     if not PinOK(q, m) or (not m.qflowers and FLOWERS[q[1]]) then
       -- (left off the map)
     elseif m.qavail and st == "available" and (m.qlow or not NS.IsTrivial(q[2])) then
-      put("qavail", id, q[18], q[19], q[20], D.names[q[13]])
+      local dr = DropSpots(id, q)
+      if dr then for k = 2, #dr - 2, 3 do put("qavail", id, dr[k], dr[k + 1], dr[k + 2], dr[1] .. " (drops it)") end
+      else put("qavail", id, q[18], q[19], q[20], D.names[q[13]]) end
     elseif m.qturn and st == "ready" then
       put("qturn", id, q[21], q[22], q[23], D.names[q[14]])
     end
@@ -793,7 +801,10 @@ local function Gather(cont, px, py)
       local st = NS.Status(id)
       if not PinOK(q, m) or (not m.qflowers and FLOWERS[q[1]]) then
         -- (left off the map)
-      elseif m.qavail and st == "available" and (m.qlow or not NS.IsTrivial(q[2])) then put("qavail", id, q[18], q[19], q[20], D.names[q[13]])
+      elseif m.qavail and st == "available" and (m.qlow or not NS.IsTrivial(q[2])) then
+        local dr = DropSpots(id, q)
+        if dr then for k = 2, #dr - 2, 3 do put("qavail", id, dr[k], dr[k + 1], dr[k + 2], dr[1] .. " (drops it)") end
+        else put("qavail", id, q[18], q[19], q[20], D.names[q[13]]) end
       elseif m.qturn and st == "ready" then put("qturn", id, q[21], q[22], q[23], D.names[q[14]]) end
     end
   end
